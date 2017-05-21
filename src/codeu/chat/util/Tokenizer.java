@@ -1,5 +1,7 @@
 package codeu.chat.util;
 
+import java.io.IOException;
+
 public final class Tokenizer {
 
     public Tokenizer(String source) {
@@ -7,6 +9,6 @@ public final class Tokenizer {
     }
 
     public String next() throws IOException {
-
+        return "";
     }
 }
