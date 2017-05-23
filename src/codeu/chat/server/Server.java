@@ -25,14 +25,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import codeu.chat.common.ConversationHeader;
-import codeu.chat.common.ConversationPayload;
-import codeu.chat.common.LinearUuidGenerator;
-import codeu.chat.common.Message;
-import codeu.chat.common.NetworkCode;
-import codeu.chat.common.Relay;
-import codeu.chat.common.Secret;
-import codeu.chat.common.User;
+import codeu.chat.common.*;
 import codeu.chat.util.Logger;
 import codeu.chat.util.Serializers;
 import codeu.chat.util.Time;
@@ -45,6 +38,8 @@ public final class Server {
   private interface Command {
     void onMessage(InputStream in, OutputStream out) throws IOException;
   }
+
+  private static final ServerInfo info = new ServerInfo();
 
   private static final Logger.Log LOG = Logger.newLog(Server.class);
 
@@ -205,6 +200,12 @@ public final class Server {
 
           final int type = Serializers.INTEGER.read(connection.in());
           final Command command = commands.get(type);
+
+          if (type == NetworkCode.SERVER_INFO_REQUEST) {
+            // The server version has been requested, so write out the response.
+            Serializers.INTEGER.write(connection.out(), NetworkCode.SERVER_INFO_RESPONSE);
+            Uuid.SERIALIZER.write(connection.out(), info.version);
+          }
 
           if (command == null) {
             // The message type cannot be handled so return a dummy message.

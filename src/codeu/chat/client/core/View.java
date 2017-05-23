@@ -17,12 +17,7 @@ package codeu.chat.client.core;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import codeu.chat.common.BasicView;
-import codeu.chat.common.ConversationHeader;
-import codeu.chat.common.ConversationPayload;
-import codeu.chat.common.Message;
-import codeu.chat.common.NetworkCode;
-import codeu.chat.common.User;
+import codeu.chat.common.*;
 import codeu.chat.util.Logger;
 import codeu.chat.util.Serializers;
 import codeu.chat.util.Time;
@@ -33,7 +28,7 @@ import codeu.chat.util.connections.ConnectionSource;
 // VIEW
 //
 // This is the view component of the Model-View-Controller pattern used by the
-// the client to reterive readonly data from the server. All methods are blocking
+// the client to retrieve readonly data from the server. All methods are blocking
 // calls.
 final class View implements BasicView {
 
@@ -136,4 +131,24 @@ final class View implements BasicView {
 
     return messages;
   }
+
+  public ServerInfo getInfo() {
+    try (final Connection connection = this.source.connect()) {
+      Serializers.INTEGER.write(connection.out(), NetworkCode.SERVER_INFO_REQUEST);
+      if (Serializers.INTEGER.read(connection.in()) == NetworkCode.SERVER_INFO_RESPONSE) {
+        final Uuid version = Uuid.SERIALIZER.read(connection.in());
+        return new ServerInfo(version);
+      } else {
+        // Communicate this error - the server did not respond with the type of
+        // response we expected.
+        LOG.error("Server did not respond with server info.");
+      }
+    } catch (Exception ex) {
+      // Communicate this error - something went wrong with the connection.
+      LOG.error(ex, "Connection error.");
+    }
+    // If we get here it means something went wrong and null should be returned
+    return null;
+  }
+
 }
