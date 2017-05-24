@@ -10,7 +10,7 @@ import java.io.IOException;
  */
 public final class ServerInfo {
 
-    private final static String SERVER_VERSION = "0.0.0";
+    private final static String SERVER_VERSION = "1.0.0";
 
     private static final Logger.Log LOG = Logger.newLog(ServerInfo.class);
 
