@@ -15,8 +15,13 @@ public final class ServerInfo {
     private static final Logger.Log LOG = Logger.newLog(ServerInfo.class);
 
     public final Uuid version;
-
+    
+    public final Time startTime;
+    public ServerInfo(Time startTime) {
+       this.startTime = startTime;
+    }
     public ServerInfo() {
+        this.startTime = Time.now();
         Uuid version;
 
         try {
