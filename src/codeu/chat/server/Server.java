@@ -172,12 +172,9 @@ public final class Server {
       @Override
       public void onMessage(InputStream in, OutputStream out) throws IOException {
 
-        // Grab server version
-        final Uuid version = info.version;
-
         // Write out server info response
         Serializers.INTEGER.write(out, NetworkCode.SERVER_INFO_RESPONSE);
-        Uuid.SERIALIZER.write(out, version);
+        Uuid.SERIALIZER.write(out, info.version);
       }
     });
 
