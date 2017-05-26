@@ -3,8 +3,10 @@ package codeu.chat.util;
 import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-public final class Tokenizer {
+public final class Tokenizer implements Iterator<String> {
 
     //stores the final "token" form of the input
     private StringBuilder token;
@@ -22,6 +24,22 @@ public final class Tokenizer {
     }
 
     /**
+     * Iterator interface's method. Uses remaining() method
+     * to see if there's characters left to read.
+     *
+     * @return  boolean     True or false indicating if there's characters left.
+     */
+    @Override
+    public boolean hasNext() {
+        if (remaining() > 0){
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    /**
      * Tokenizes the source String by turning each group of characters
      * separated by white space into a String. Returns the next group of
      * characters in the source String for every method call.
@@ -29,21 +47,25 @@ public final class Tokenizer {
      * @return  String      Next group of characters without white space in the source String.
      * @throws IOException  May throw an IO Exception through calling the read() method.
      */
-    public String next() throws IOException {
-        //ignores all whitespace at beginning of the source String
-        while (remaining() > 0 && Character.isWhitespace(peek())){
-            read();
-        }
-        //returns null if there are no more characters in the String
-        if (remaining() <= 0 ){
-            return null;
-        }
-        // if the source String is surrounded by quotes
-        else if (peek() == '"'){
-           return readWithQuotes();
-        }
-        else {
-           return readWithNoQuotes();
+    @Override
+    public String next() throws NoSuchElementException {
+        try {
+            //ignores all whitespace at beginning of the source String
+            while (hasNext() && Character.isWhitespace(peek())) {
+                read();
+            }
+            //returns null if there are no more characters in the String
+            if (!hasNext()) {
+                return null;
+            }
+            // if the source String is surrounded by quotes
+            else if (peek() == '"') {
+                return readWithQuotes();
+            } else {
+                return readWithNoQuotes();
+            }
+        } catch (IOException e) {
+            throw new NoSuchElementException("No more characters!");
         }
     }
 
@@ -63,7 +85,7 @@ public final class Tokenizer {
             throw new IOException("String is not surrounded by quotes!");
         }
         //appends characters until a closing quotations mark is reached
-        while (remaining() > 0 && peek() != '"'){
+        while (hasNext() && peek() != '"'){
             token.append(read());
         }
         //reads the closing quotation mark
@@ -82,7 +104,7 @@ public final class Tokenizer {
         //clearing StringBuilder that will hold returned String
         token.setLength(0);
         //appends characters until a white space is reached
-        while (remaining() > 0 && !Character.isWhitespace(peek())){
+        while (hasNext() && !Character.isWhitespace(peek())){
             token.append(read());
         }
         return token.toString();

@@ -51,13 +51,7 @@ public final class Chat {
     final Tokenizer tokenizer = new Tokenizer(line);
 
     //tokenizing the input, and adding each token to the ArrayList
-    try {
-      for (String token = tokenizer.next(); token != null; token = tokenizer.next()) {
-        args.add(token);
-      }
-    } catch (IOException exception) {
-        System.err.println("IOException: " + exception.getMessage());
-    }
+      tokenizer.forEachRemaining(args :: add);
 
     //getting the tokens/Strings as commands
     final String command = args.get(0);
