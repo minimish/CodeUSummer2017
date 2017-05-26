@@ -150,5 +150,25 @@ final class View implements BasicView {
     // If we get here it means something went wrong and null should be returned
     return null;
   }
+  
+  public ServerInfo getInfo() {
+    try (final Connection connection = source.connection()) {
+      Serializers.INTEGER.write(connection.out(), NetworkCode.SERVER_INFO_REQUEST);
+      if (Serializers.INTEGER.read(connection.in()) == NetworkCode.SERVER_INFO_RESPONSE) {
+        final Time startTime = Time.SERIALIZER.read(connection.in());
+        return new ServerInfo(startTime);
+      } else {
+         // Communicate this error - the server did not respond with the type of
+         // response we expected
+        throw new IllegalArgumentException("The server did not respond with what we expected.");
+      } catch (IllegalArgumentException ex) {
+         // Communicate this error - something went wrong with the connection.
+      }
+      return null;
+    }
+        
+ }
+
+  }
 
 }
