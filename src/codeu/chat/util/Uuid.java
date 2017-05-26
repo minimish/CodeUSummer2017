@@ -73,7 +73,7 @@ public final class Uuid {
 
   // GENERATOR
   //
-  // This interface defines the inteface used for any class that will
+  // This interface defines the interface used for any class that will
   // create Uuids. It is nested in here as for naming reasons. The two
   // options was to have it sit along side Uuid can be called UuidGenerator
   // or to scope it inside of Uuid so that it would be called Uuid.Generator.
@@ -124,7 +124,7 @@ public final class Uuid {
     return equals(a.root(), b.root());
   }
 
-  // Check if two Uuids represent the same value even if they are different refereces. This
+  // Check if two Uuids represent the same value even if they are different references. This
   // means that all ids from the tail to the root have the same ids.
   public static boolean equals(Uuid a, Uuid b) {
 

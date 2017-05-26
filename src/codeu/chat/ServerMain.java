@@ -40,7 +40,7 @@ final class ServerMain {
     Logger.enableConsoleOutput();
 
     try {
-      Logger.enableFileOutput("chat_server_log.log");
+      Logger.enableFileOutput("data/chat_server_log.log");
     } catch (IOException ex) {
       LOG.error(ex, "Failed to set logger to write to file");
     }
@@ -50,7 +50,7 @@ final class ServerMain {
     Uuid id = null;
     Secret secret = null;
     int port = -1;
-    // This is the directory where it is safe to store data accross runs
+    // This is the directory where it is safe to store data across runs
     // of the server.
     File persistentPath = null;
     RemoteAddress relayAddress = null;
