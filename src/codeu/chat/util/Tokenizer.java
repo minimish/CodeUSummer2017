@@ -5,8 +5,9 @@ import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 
-public final class Tokenizer implements Iterator<String> {
+public final class  Tokenizer implements Iterator<String> {
 
     //stores the final "token" form of the input
     private StringBuilder token;
@@ -60,10 +61,17 @@ public final class Tokenizer implements Iterator<String> {
             }
             // if the source String is surrounded by quotes
             else if (peek() == '"') {
-                return readWithQuotes();
+                //reads in leading quotation
+                read();
+                //characters read until the ending quotation is read
+                readUntil(c -> c == '"');
+                //reading in final quotation
+                read();
             } else {
-                return readWithNoQuotes();
+                //characters read until white space is read
+                readUntil(c -> Character.isWhitespace(c));
             }
+            return token.toString();
         } catch (IOException e) {
             throw new NoSuchElementException("No more characters!");
         }
@@ -71,40 +79,15 @@ public final class Tokenizer implements Iterator<String> {
 
     /**
      * Returns the next group of characters in the source String
-     * surrounded by quotes for every method call.
+     * for every method call, handles source String with and without quotation marks.
      *
      * @return  String      Next group of characters without white space in the source String.
      * @throws IOException  May throw an IO Exception through calling the read() method or if
      *                      String does not have a leading quotation mark.
      */
-    private String readWithQuotes() throws IOException {
-        //clearing StringBuilder that will hold returned String
+    private String readUntil(Function<Character, Boolean> terminationCondition) throws IOException{
         token.setLength(0);
-        //ensures first character is quotation, also allows next non-quote character to be read next
-        if (read() != '"'){
-            throw new IOException("String is not surrounded by quotes!");
-        }
-        //appends characters until a closing quotations mark is reached
-        while (hasNext() && peek() != '"'){
-            token.append(read());
-        }
-        //reads the closing quotation mark
-        read();
-        return token.toString();
-    }
-
-    /**
-     * Returns the next group of characters in the source String
-     * with no surrounding quotes for every method call.
-     *
-     * @return  String      Next group of characters without white space in the source String.
-     * @throws IOException  May throw an IO Exception through calling the read() method.
-     */
-    private String readWithNoQuotes() throws IOException {
-        //clearing StringBuilder that will hold returned String
-        token.setLength(0);
-        //appends characters until a white space is reached
-        while (hasNext() && !Character.isWhitespace(peek())){
+        while (hasNext() && terminationCondition.apply(peek()) == false){
             token.append(read());
         }
         return token.toString();
