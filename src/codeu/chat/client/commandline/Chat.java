@@ -55,7 +55,7 @@ public final class Chat {
     final Tokenizer tokenizer = new Tokenizer(line);
 
     //tokenizing the input, and adding each token to the ArrayList
-      tokenizer.forEachRemaining(args :: add);
+    tokenizer.forEachRemaining(args :: add);
 
     //getting the tokens/Strings as commands
     final String command = args.get(0);
@@ -149,10 +149,7 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        //TODO: possible place of error, not sure how to test username creation
-        // what's in the List being passed in? Is it already tokenized? The scanner code took the entire line?
-        // final String name = args.hasNext() ? args.nextLine().trim() : ""; (old/given code, uses a parameter Scanner args)
-        final String name = args.get(0) != null ? args.get(0) : ""; //this works if the args list passed in contains tokens
+        final String name = args.size() > 0 ? args.get(0) : ""; //this works if the args list passed in contains tokens
         if (name.length() > 0) {
           if (context.create(name) == null) {
             System.out.println("ERROR: Failed to create new user");
@@ -171,8 +168,7 @@ public final class Chat {
     panel.register("u-sign-in", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        //TODO: if the method above is wrong, this one also must be changed
-        final String name = args.get(0) != null ? args.get(0) : "";
+        final String name = args.size() > 0 ? args.get(0) : "";
         if (name.length() > 0) {
           final UserContext user = findUser(name);
           if (user == null) {
@@ -199,7 +195,7 @@ public final class Chat {
 
     panel.register("info", new Panel.Command() {
       @Override
-      public void invoke(Scanner args) {
+      public void invoke(List<String> args) {
         final ServerInfo info = context.getInfo();
         if (info == null) {
           // Communicate error to user - the server did not send us a valid
@@ -270,8 +266,7 @@ public final class Chat {
     panel.register("c-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        //TODO: same issue/uncertainty as in above methods
-        final String name = args.get(0) != null ? args.get(0) : "";
+        final String name = args.size() > 0 ? args.get(0) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = user.start(name);
           if (conversation == null) {
@@ -293,8 +288,7 @@ public final class Chat {
     panel.register("c-join", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        //TODO: same issue/uncertainty
-        final String name = args.get(0) != null ? args.get(0) : "";
+        final String name = args.size() > 0 ? args.get(0) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = find(name);
           if (conversation == null) {
@@ -395,8 +389,7 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        //TODO: same issue/uncertainty
-        final String message = args.get(0) != null ? args.get(0) : "";
+        final String message = args.size() > 0 ? args.get(0) : "";
         if (message.length() > 0) {
           conversation.add(message);
         } else {
