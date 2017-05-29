@@ -32,7 +32,7 @@ final class ClientMain {
   public static void main(String [] args) {
 
     try {
-      Logger.enableFileOutput("chat_client_log.log");
+      Logger.enableFileOutput("data/chat_client_log.log");
     } catch (IOException ex) {
       LOG.error(ex, "Failed to set logger to write to file");
     }

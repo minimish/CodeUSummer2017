@@ -22,6 +22,10 @@ import codeu.chat.client.core.ConversationContext;
 import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.util.Tokenizer;
+import codeu.chat.common.ServerInfo;
+import codeu.chat.util.Logger;
+import codeu.chat.util.Uuid;
+
 
 public final class Chat {
 
@@ -113,6 +117,8 @@ public final class Chat {
         System.out.println("    Add a new user with the given name.");
         System.out.println("  u-sign-in <name>");
         System.out.println("    Sign in as the user with the given name.");
+        System.out.println("  info");
+        System.out.println("    Get server version.");
         System.out.println("  exit");
         System.out.println("    Exit the program.");
       }
@@ -188,6 +194,21 @@ public final class Chat {
           }
         }
         return null;
+      }
+    });
+
+    panel.register("info", new Panel.Command() {
+      @Override
+      public void invoke(Scanner args) {
+        final ServerInfo info = context.getInfo();
+        if (info == null) {
+          // Communicate error to user - the server did not send us a valid
+          // info object.
+          System.out.println("ERROR: Failed to get valid server info.");
+        } else {
+          // Print the server info to the user in a pretty way
+          System.out.println("Server version: " + info.version.toString());
+        }
       }
     });
 
