@@ -124,7 +124,7 @@ public final class Uuid {
     return equals(a.root(), b.root());
   }
 
-  // Check if two Uuids represent the same value even if they are different refereces. This
+  // Check if two Uuids represent the same value even if they are different references. This
   // means that all ids from the tail to the root have the same ids.
   public static boolean equals(Uuid a, Uuid b) {
 

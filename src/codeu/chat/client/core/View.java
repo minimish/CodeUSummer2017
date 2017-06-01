@@ -133,12 +133,13 @@ final class View implements BasicView {
   }
 
   public ServerInfo getInfo() {
+
     try (final Connection connection = this.source.connect()) {
       Serializers.INTEGER.write(connection.out(), NetworkCode.SERVER_INFO_REQUEST);
-      if (Serializers.INTEGER.read(connection.in()) == NetworkCode.SERVER_INFO_RESPONSE) {
-        final Uuid version = Uuid.SERIALIZER.read(connection.in());
-        return new ServerInfo(version);
-      } else {
+
+      if (Serializers.INTEGER.read(connection.in()) == NetworkCode.SERVER_INFO_RESPONSE)
+        return new ServerInfo(Uuid.SERIALIZER.read(connection.in()));
+      else {
         // Communicate this error - the server did not respond with the type of
         // response we expected.
         LOG.error("Server did not respond with server info.");

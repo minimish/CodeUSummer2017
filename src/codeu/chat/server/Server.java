@@ -138,7 +138,7 @@ public final class Server {
       }
     });
 
-    // Get Conversations By Id - A client wants to get a subset of the converations from
+    // Get Conversations By Id - A client wants to get a subset of the conversations from
     //                           the back end. Normally this will be done after calling
     //                           Get Conversations to get all the headers and now the client
     //                           wants to get a subset of the payloads.
@@ -167,12 +167,23 @@ public final class Server {
       }
     });
 
+    // Get Server Info - A client wants to see the current server version.
+    this.commands.put(NetworkCode.SERVER_INFO_REQUEST, new Command() {
+      @Override
+      public void onMessage(InputStream in, OutputStream out) throws IOException {
+
+        // Write out server info response
+        Serializers.INTEGER.write(out, NetworkCode.SERVER_INFO_RESPONSE);
+        Uuid.SERIALIZER.write(out, info.version);
+      }
+    });
+
     this.timeline.scheduleNow(new Runnable() {
       @Override
       public void run() {
         try {
 
-          LOG.info("Reading update from relay...");
+          LOG.verbose("Reading update from relay...");
 
           for (final Relay.Bundle bundle : relay.read(id, secret, lastSeen, 32)) {
             onBundle(bundle);
@@ -200,12 +211,6 @@ public final class Server {
 
           final int type = Serializers.INTEGER.read(connection.in());
           final Command command = commands.get(type);
-
-          if (type == NetworkCode.SERVER_INFO_REQUEST) {
-            // The server version has been requested, so write out the response.
-            Serializers.INTEGER.write(connection.out(), NetworkCode.SERVER_INFO_RESPONSE);
-            Uuid.SERIALIZER.write(connection.out(), info.version);
-          }
 
           if (command == null) {
             // The message type cannot be handled so return a dummy message.

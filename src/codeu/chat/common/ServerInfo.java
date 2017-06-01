@@ -13,25 +13,23 @@ public final class ServerInfo {
     private final static String SERVER_VERSION = "1.0.0";
 
     private static final Logger.Log LOG = Logger.newLog(ServerInfo.class);
-
-    public final Uuid version;
     
     public final Time startTime;
-    public ServerInfo(Time startTime) {
-       this.startTime = startTime;
-    }
+    // Removed 'final' because of try/catch error
+    public Uuid version;
+  
     public ServerInfo() {
         this.startTime = Time.now();
-        Uuid version;
-
         try {
-            version = Uuid.parse(SERVER_VERSION);
+            this.version = Uuid.parse(SERVER_VERSION);
         } catch(Exception ex) {
-            version = Uuid.NULL;
+            this.version = Uuid.NULL;
             LOG.error(ex, "Server version cannot be parsed. Default Uuid version used.");
         }
-
-        this.version = version;
+    }
+  
+    public ServerInfo(Time startTime) {
+       this.startTime = startTime;
     }
 
     public ServerInfo(Uuid version) {
