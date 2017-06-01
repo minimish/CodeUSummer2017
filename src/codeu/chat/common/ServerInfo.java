@@ -2,6 +2,7 @@ package codeu.chat.common;
 
 import codeu.chat.server.Server;
 import codeu.chat.util.Logger;
+import codeu.chat.util.Time;
 import codeu.chat.util.Uuid;
 import java.io.IOException;
 
@@ -14,12 +15,14 @@ public final class ServerInfo {
 
     private static final Logger.Log LOG = Logger.newLog(ServerInfo.class);
     
-    public final Time startTime;
+    public Time startTime;
+
     // Removed 'final' because of try/catch error
     public Uuid version;
   
     public ServerInfo() {
         this.startTime = Time.now();
+
         try {
             this.version = Uuid.parse(SERVER_VERSION);
         } catch(Exception ex) {
