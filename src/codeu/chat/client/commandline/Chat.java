@@ -21,6 +21,8 @@ import codeu.chat.client.core.Context;
 import codeu.chat.client.core.ConversationContext;
 import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
+import codeu.chat.common.Message;
+import codeu.chat.common.User;
 import codeu.chat.util.Tokenizer;
 import codeu.chat.common.ServerInfo;
 import codeu.chat.util.Logger;
@@ -28,6 +30,8 @@ import codeu.chat.util.Uuid;
 
 
 public final class Chat {
+
+  private static final Logger.Log LOG = Logger.newLog(Chat.class);
 
   // PANELS
   //
@@ -39,7 +43,14 @@ public final class Chat {
   private final Stack<Panel> panels = new Stack<>();
 
   public Chat(Context context) {
+
     this.panels.push(createRootPanel(context));
+
+    try {
+      Logger.enableFileOutput("data/transaction_log.log");
+    } catch (IOException ex) {
+      LOG.error(ex, "Failed to set logger to write to file");
+    }
   }
 
   // HANDLE COMMAND
@@ -150,13 +161,19 @@ public final class Chat {
       @Override
       public void invoke(List<String> args) {
         final String name = args.size() > 0 ? args.get(0) : ""; //this works if the args list passed in contains tokens
+        final UserContext user = context.create(name);
+
         if (name.length() > 0) {
-          if (context.create(name) == null) {
+          if (user == null) {
             System.out.println("ERROR: Failed to create new user");
+          } else {
+            LOG.info("ADD-USER " + user.user.id + " \"" + user.user.name + "\" " + user.user.creation);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
         }
+
+
       }
     });
 
@@ -175,6 +192,7 @@ public final class Chat {
             System.out.format("ERROR: Failed to sign in as '%s'\n", name);
           } else {
             panels.push(createUserPanel(user));
+            LOG.info("SIGN-IN-USER " + user.user.id + " \"" + user.user.name + "\" " + user.user.creation);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -273,6 +291,7 @@ public final class Chat {
             System.out.println("ERROR: Failed to create new conversation");
           } else {
             panels.push(createConversationPanel(conversation));
+            LOG.info("ADD-CONVERSATION " + conversation.conversation.id + " \"" + conversation.conversation.title + "\" " + conversation.conversation.creation + " " + conversation.conversation.owner);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -282,7 +301,7 @@ public final class Chat {
 
     // C-JOIN (join conversation)
     //
-    // Add a command that will joing a conversation when the user enters
+    // Add a command that will join a conversation when the user enters
     // "c-join" while on the user panel.
     //
     panel.register("c-join", new Panel.Command() {
@@ -295,6 +314,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
+            LOG.info("JOIN-CONVERSATION " + conversation.conversation.id + " \"" + conversation.conversation.title + "\" ");
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -392,6 +412,7 @@ public final class Chat {
         final String message = args.size() > 0 ? args.get(0) : "";
         if (message.length() > 0) {
           conversation.add(message);
+          LOG.info("ADD-MESSAGE " + conversation.user.creation + " \"" + message + "\"");
         } else {
           System.out.println("ERROR: Messages must contain text");
         }
