@@ -145,7 +145,7 @@ public final class Chat {
       public void invoke(List<String> args) {
         for (final UserContext user : context.allUsers()) {
           System.out.format(
-              "USER %s (UUID:%s)\n",
+              "USER %s (UUID: %s)\n",
               user.user.name,
               user.user.id);
         }
@@ -167,7 +167,7 @@ public final class Chat {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
-            LOG.info("ADD-USER " + user.user.id + " \"" + user.user.name + "\" " + user.user.creation);
+            LOG.info(String.format("ADD-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -192,7 +192,7 @@ public final class Chat {
             System.out.format("ERROR: Failed to sign in as '%s'\n", name);
           } else {
             panels.push(createUserPanel(user));
-            LOG.info("SIGN-IN-USER " + user.user.id + " \"" + user.user.name + "\" " + user.user.creation);
+            LOG.info(String.format("SIGN-IN-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -269,7 +269,7 @@ public final class Chat {
       public void invoke(List<String> args) {
         for (final ConversationContext conversation : user.conversations()) {
           System.out.format(
-              "CONVERSATION %s (UUID:%s)\n",
+              "CONVERSATION %s (UUID: %s)\n",
               conversation.conversation.title,
               conversation.conversation.id);
         }
@@ -291,7 +291,8 @@ public final class Chat {
             System.out.println("ERROR: Failed to create new conversation");
           } else {
             panels.push(createConversationPanel(conversation));
-            LOG.info("ADD-CONVERSATION " + conversation.conversation.id + " \"" + conversation.conversation.title + "\" " + conversation.conversation.creation + " " + conversation.conversation.owner);
+            LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
+                    conversation.conversation.title, conversation.conversation.creation));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -314,7 +315,8 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
-            LOG.info("JOIN-CONVERSATION " + conversation.conversation.id + " \"" + conversation.conversation.title + "\" ");
+            LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
+                    conversation.conversation.title, conversation.conversation.creation));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -343,7 +345,7 @@ public final class Chat {
       public void invoke(List<String> args) {
         System.out.println("User Info:");
         System.out.format("  Name : %s\n", user.user.name);
-        System.out.format("  Id   : UUID:%s\n", user.user.id);
+        System.out.format("  Id   : UUID: %s\n", user.user.id);
       }
     });
 
@@ -411,8 +413,9 @@ public final class Chat {
       public void invoke(List<String> args) {
         final String message = args.size() > 0 ? args.get(0) : "";
         if (message.length() > 0) {
-          conversation.add(message);
-          LOG.info("ADD-MESSAGE " + conversation.user.creation + " \"" + message + "\"");
+          MessageContext messageContext = conversation.add(message);
+          LOG.info(String.format("ADD-MESSAGE %s %s %s %s", messageContext.message.id, messageContext.message.author,
+                  messageContext.message.content, messageContext.message.creation));
         } else {
           System.out.println("ERROR: Messages must contain text");
         }
@@ -429,7 +432,7 @@ public final class Chat {
       public void invoke(List<String> args) {
         System.out.println("Conversation Info:");
         System.out.format("  Title : %s\n", conversation.conversation.title);
-        System.out.format("  Id    : UUID:%s\n", conversation.conversation.id);
+        System.out.format("  Id    : UUID: %s\n", conversation.conversation.id);
         System.out.format("  Owner : %s\n", conversation.conversation.owner);
       }
     });
