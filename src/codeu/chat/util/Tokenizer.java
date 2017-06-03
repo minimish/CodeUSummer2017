@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
-//comment to test the first commit to the persistent_storage branch
 public final class  Tokenizer implements Iterator<String> {
 
     //stores the final "token" form of the input
