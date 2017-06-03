@@ -220,7 +220,6 @@ public final class Server {
             command.onMessage(connection.in(), connection.out());
             LOG.info("Connection accepted");
           }
-
         } catch (Exception ex) {
 
           LOG.error(ex, "Exception while handling connection.");

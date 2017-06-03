@@ -33,9 +33,22 @@ public final class ServerInfo {
   
     public ServerInfo(Time startTime) {
        this.startTime = startTime;
+
+        try {
+            this.version = Uuid.parse(SERVER_VERSION);
+        } catch(Exception ex) {
+            this.version = Uuid.NULL;
+            LOG.error(ex, "Server version cannot be parsed. Default Uuid version used.");
+        }
     }
 
     public ServerInfo(Uuid version) {
         this.version = version;
+        this.startTime = Time.now();
+    }
+
+    public ServerInfo(Uuid version, Time startTime){
+        this.version = version;
+        this.startTime = startTime;
     }
 }
