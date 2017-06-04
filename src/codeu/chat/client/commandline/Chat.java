@@ -33,6 +33,13 @@ public final class Chat {
 
   private static final Logger.Log LOG = Logger.newLog(Chat.class);
 
+  /**
+   * ArrayDeque is a double-ended, self-resizing queue, used
+   * to keep track of commands for the transaction log and chat
+   * rebuilding.
+   */
+  private final ArrayDeque<String> transactionLog = new ArrayDeque<>();
+
   // PANELS
   //
   // We are going to use a stack of panels to track where in the application
@@ -160,13 +167,15 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? args.get(0) : ""; //this works if the args list passed in contains tokens
+        final String name = args.size() > 0 ? args.get(0) : "";
         final UserContext user = context.create(name);
 
         if (name.length() > 0) {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
+            transactionLog.add(String.format("ADD-USER id: %s, username: %s, time: %s",
+                                user.user.id, user.user.name, user.user.creation));
             LOG.info(String.format("ADD-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
         } else {
@@ -192,6 +201,8 @@ public final class Chat {
             System.out.format("ERROR: Failed to sign in as '%s'\n", name);
           } else {
             panels.push(createUserPanel(user));
+            transactionLog.add(String.format("SIGN-IN-USER id: %s, username: %s, time: %s",
+                                user.user.id, user.user.name, user.user.creation));
             LOG.info(String.format("SIGN-IN-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
         } else {
@@ -291,6 +302,9 @@ public final class Chat {
             System.out.println("ERROR: Failed to create new conversation");
           } else {
             panels.push(createConversationPanel(conversation));
+            transactionLog.add(String.format("ADD-CONSERVATION id: %s, owner: %s, title: %s, time: %s",
+                            conversation.conversation.id, conversation.conversation.owner,
+                            conversation.conversation.title, conversation.conversation.creation));
             LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
                     conversation.conversation.title, conversation.conversation.creation));
           }
@@ -315,7 +329,10 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
-            LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
+            transactionLog.add(String.format("JOIN-CONSERVATION id: %s, owner: %s, title: %s, time: %s",
+                    conversation.conversation.id, conversation.conversation.owner,
+                    conversation.conversation.title, conversation.conversation.creation));
+            LOG.info(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
                     conversation.conversation.title, conversation.conversation.creation));
           }
         } else {
@@ -414,6 +431,9 @@ public final class Chat {
         final String message = args.size() > 0 ? args.get(0) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
+          transactionLog.add(String.format("ADD-MESSAGE id: %s, author: %s, content: %s, time: %s",
+                  messageContext.message.id, messageContext.message.author,
+                  messageContext.message.content, messageContext.message.creation));
           LOG.info(String.format("ADD-MESSAGE %s %s %s %s", messageContext.message.id, messageContext.message.author,
                   messageContext.message.content, messageContext.message.creation));
         } else {
