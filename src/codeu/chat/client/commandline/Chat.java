@@ -14,6 +14,8 @@
 
 package codeu.chat.client.commandline;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
@@ -58,6 +60,38 @@ public final class Chat {
     } catch (IOException ex) {
       LOG.error(ex, "Failed to set logger to write to file");
     }
+
+    // Whenever a new Chat session is made, reload the data from the log
+    try {
+      reloadOldData();
+    } catch (Exception e){
+      System.out.println("Could not load transaction log.");
+    }
+
+  }
+
+  private void reloadOldData() throws IOException {
+    // Open the transaction log file for reading
+    FileReader fileReader = new FileReader("data/transaction_log.log");
+    BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+    // Read the header of each log, as well as it's message
+    String headLine = bufferedReader.readLine();
+    String dataLine = bufferedReader.readLine();
+
+    // TODO: Parse the log data, and create users/conversations/messages as necessary
+    while(headLine != null && dataLine != null){
+
+      headLine = bufferedReader.readLine();
+      dataLine = bufferedReader.readLine();
+    }
+
+  }
+
+  // Transfers all data in the Queue to write to the log
+  private void transferQueueToLog(){
+    while(!transactionLog.isEmpty())
+      LOG.info(transactionLog.pop());
   }
 
   // HANDLE COMMAND
@@ -96,6 +130,9 @@ public final class Chat {
 
     if (panels.peek().handleCommand(command, args)) {
       // the command was handled
+
+      // TODO: Add an if statement evaluating if it is time to transfer data from queue to disk,
+      // then call the transferQueueToLog() method defined above
       return true;
     }
 
