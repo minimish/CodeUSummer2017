@@ -61,6 +61,7 @@ final class ServerMain {
       port = Integer.parseInt(args[2]);
       persistentPath = new File(args[3]);
       relayAddress = args.length > 4 ? RemoteAddress.parse(args[4]) : null;
+      System.out.println("meow");
     } catch (Exception ex) {
       LOG.error(ex, "Failed to read command arguments");
       System.exit(1);

@@ -81,9 +81,12 @@ public final class Chat {
 
     // TODO: Parse the log data, and create users/conversations/messages as necessary
     while(headLine != null && dataLine != null){
-
+      //holds default log String
       headLine = bufferedReader.readLine();
+      //holds what was inserted into log (what's parsed)
       dataLine = bufferedReader.readLine();
+
+
     }
 
   }
@@ -211,7 +214,7 @@ public final class Chat {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
-            transactionLog.add(String.format("ADD-USER id: %s, username: %s, time: %s",
+            transactionLog.add(String.format("ADD-USER %s %s %s", //command user-id username creation-time
                                 user.user.id, user.user.name, user.user.creation));
             LOG.info(String.format("ADD-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
@@ -238,8 +241,8 @@ public final class Chat {
             System.out.format("ERROR: Failed to sign in as '%s'\n", name);
           } else {
             panels.push(createUserPanel(user));
-            transactionLog.add(String.format("SIGN-IN-USER id: %s, username: %s, time: %s",
-                                user.user.id, user.user.name, user.user.creation));
+                                              //command user-id username creation-time
+            transactionLog.add(String.format("SIGN-IN-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
             LOG.info(String.format("SIGN-IN-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
         } else {
@@ -339,9 +342,8 @@ public final class Chat {
             System.out.println("ERROR: Failed to create new conversation");
           } else {
             panels.push(createConversationPanel(conversation));
-            transactionLog.add(String.format("ADD-CONSERVATION id: %s, owner: %s, title: %s, time: %s",
-                            conversation.conversation.id, conversation.conversation.owner,
-                            conversation.conversation.title, conversation.conversation.creation));
+            transactionLog.add(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
+                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id convo-owner convo-title creation-time
             LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
                     conversation.conversation.title, conversation.conversation.creation));
           }
@@ -366,9 +368,8 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
-            transactionLog.add(String.format("JOIN-CONSERVATION id: %s, owner: %s, title: %s, time: %s",
-                    conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation));
+            transactionLog.add(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
+                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id convo-owner convo-title creation-time
             LOG.info(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
                     conversation.conversation.title, conversation.conversation.creation));
           }
@@ -468,9 +469,8 @@ public final class Chat {
         final String message = args.size() > 0 ? args.get(0) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
-          transactionLog.add(String.format("ADD-MESSAGE id: %s, author: %s, content: %s, time: %s",
-                  messageContext.message.id, messageContext.message.author,
-                  messageContext.message.content, messageContext.message.creation));
+          transactionLog.add(String.format("ADD-MESSAGE %s %s %s %s", messageContext.message.id, messageContext.message.author,
+                  messageContext.message.content, messageContext.message.creation)); //command message-id message-author message-content creation-time
           LOG.info(String.format("ADD-MESSAGE %s %s %s %s", messageContext.message.id, messageContext.message.author,
                   messageContext.message.content, messageContext.message.creation));
         } else {
