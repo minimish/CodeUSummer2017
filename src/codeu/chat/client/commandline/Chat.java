@@ -75,18 +75,43 @@ public final class Chat {
     FileReader fileReader = new FileReader("data/transaction_log.log");
     BufferedReader bufferedReader = new BufferedReader(fileReader);
 
-    // Read the header of each log, as well as it's message
+    // Read the header lines of each transaction log
     String headLine = bufferedReader.readLine();
     String dataLine = bufferedReader.readLine();
 
     // TODO: Parse the log data, and create users/conversations/messages as necessary
     while(headLine != null && dataLine != null){
-      //holds default log String
+      //holds default log information line above each command
       headLine = bufferedReader.readLine();
       //holds what was inserted into log (what's parsed)
       dataLine = bufferedReader.readLine();
 
+      String[] logInfo = dataLine.split(" ");
+      //if the number of separate Strings in log isn't 6 or 7 it's not a command we logged
+      if (logInfo.length != 6 || logInfo.length != 7){
+        continue; //ignore this line, move on to parse next lines
+      }
 
+      //for all commands, name is the second element
+      String command = logInfo[1];
+      //UUid for the convo, user, or message depending on command type
+      String id = logInfo[2];
+      //for all commands, time and date are last and second-to-last elements
+      String time = logInfo[logInfo.length - 1];
+      String date = logInfo[logInfo.length - 2];
+
+      //if the log is for a user-related command (add/sign in) there will be 6 elements
+      if (logInfo.length == 6){
+        //for user-related commands 3rd element will be user's chosen name
+        String userName = logInfo[3];
+      }
+      //if the log is for a conversation or message command there will be 7 elements
+      else if (logInfo.length == 7){
+        //for convo/message commands 3rd element is creator's NUMERIC ID (UUID not name)
+        String ownerUUID = logInfo[3];
+        //for convo commands 4th element is convo name, for message commands 4th element is message content
+        String text = logInfo[4];
+      }
     }
 
   }
@@ -343,7 +368,7 @@ public final class Chat {
           } else {
             panels.push(createConversationPanel(conversation));
             transactionLog.add(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id convo-owner convo-title creation-time
+                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id (uuid of)convo-owner convo-title creation-time
             LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
                     conversation.conversation.title, conversation.conversation.creation));
           }
@@ -369,7 +394,7 @@ public final class Chat {
           } else {
             panels.push(createConversationPanel(conversation));
             transactionLog.add(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id convo-owner convo-title creation-time
+                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id (UUid of)convo-owner convo-title creation-time
             LOG.info(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
                     conversation.conversation.title, conversation.conversation.creation));
           }
