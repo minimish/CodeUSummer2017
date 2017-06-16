@@ -14,26 +14,21 @@
 
 package codeu.chat.client.commandline;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 import codeu.chat.client.core.Context;
 import codeu.chat.client.core.ConversationContext;
 import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
-import codeu.chat.common.Message;
-import codeu.chat.common.User;
+import codeu.chat.common.*;
 import codeu.chat.util.Tokenizer;
-import codeu.chat.common.ServerInfo;
 import codeu.chat.util.Logger;
-import codeu.chat.util.Uuid;
-
 
 public final class Chat {
 
-  private static final Logger.Log LOG = Logger.newLog(Chat.class);
+  private static final File logFile = new File("data/transaction_log.txt");
+  private static PrintWriter pw_log;
 
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
@@ -56,70 +51,22 @@ public final class Chat {
     this.panels.push(createRootPanel(context));
 
     try {
-      Logger.enableFileOutput("data/transaction_log.log");
-    } catch (IOException ex) {
-      LOG.error(ex, "Failed to set logger to write to file");
+      // Create a new transaction_log.txt file if needed - if not, this command does nothing
+      if(!logFile.createNewFile())
+        System.out.println("Successfully restored last logged server state.");
+
+      // Open the file as a PrintWriter and set file writing options to append
+      pw_log = new PrintWriter(new BufferedWriter(new FileWriter("data/transaction_log.txt", true)));
     }
-
-    // Whenever a new Chat session is made, reload the data from the log
-    try {
-      reloadOldData();
-    } catch (Exception e){
-      System.out.println("Could not load transaction log.");
+    catch (Exception ex){
+      System.out.println("Unable to load transaction log.");
     }
-
-  }
-
-  private void reloadOldData() throws IOException {
-    // Open the transaction log file for reading
-    FileReader fileReader = new FileReader("data/transaction_log.log");
-    BufferedReader bufferedReader = new BufferedReader(fileReader);
-
-    // Read the header lines of each transaction log
-    String headLine = bufferedReader.readLine();
-    String dataLine = bufferedReader.readLine();
-
-    // TODO: Parse the log data, and create users/conversations/messages as necessary
-    while(headLine != null && dataLine != null){
-      //holds default log information line above each command
-      headLine = bufferedReader.readLine();
-      //holds what was inserted into log (what's parsed)
-      dataLine = bufferedReader.readLine();
-
-      String[] logInfo = dataLine.split(" ");
-      //if the number of separate Strings in log isn't 6 or 7 it's not a command we logged
-      if (logInfo.length != 6 || logInfo.length != 7){
-        continue; //ignore this line, move on to parse next lines
-      }
-
-      //for all commands, name is the second element
-      String command = logInfo[1];
-      //UUid for the convo, user, or message depending on command type
-      String id = logInfo[2];
-      //for all commands, time and date are last and second-to-last elements
-      String time = logInfo[logInfo.length - 1];
-      String date = logInfo[logInfo.length - 2];
-
-      //if the log is for a user-related command (add/sign in) there will be 6 elements
-      if (logInfo.length == 6){
-        //for user-related commands 3rd element will be user's chosen name
-        String userName = logInfo[3];
-      }
-      //if the log is for a conversation or message command there will be 7 elements
-      else if (logInfo.length == 7){
-        //for convo/message commands 3rd element is creator's NUMERIC ID (UUID not name)
-        String ownerUUID = logInfo[3];
-        //for convo commands 4th element is convo name, for message commands 4th element is message content
-        String text = logInfo[4];
-      }
-    }
-
   }
 
   // Transfers all data in the Queue to write to the log
   private void transferQueueToLog(){
     while(!transactionLog.isEmpty())
-      LOG.info(transactionLog.pop());
+      pw_log.println(transactionLog.pop());
   }
 
   // HANDLE COMMAND
@@ -147,6 +94,10 @@ public final class Chat {
 
     if ("exit".equals(command)) {
       // The user does not want to process any more commands
+
+      // Flush out the buffer contents and close file
+      pw_log.flush();
+      pw_log.close();
       return false;
     }
 
@@ -161,6 +112,9 @@ public final class Chat {
 
       // TODO: Add an if statement evaluating if it is time to transfer data from queue to disk,
       // then call the transferQueueToLog() method defined above
+
+      // Flush out buffer to ensure that every command gets written to file immediately
+      pw_log.flush();
       return true;
     }
 
@@ -232,16 +186,26 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? args.get(0) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         final UserContext user = context.create(name);
 
         if (name.length() > 0) {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
-            transactionLog.add(String.format("ADD-USER %s %s %s", //command user-id username creation-time
-                                user.user.id, user.user.name, user.user.creation));
-            LOG.info(String.format("ADD-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
+
+            //command user-id username creation-time
+            transactionLog.add(String.format("ADD-USER %s \"%s\" %s",
+                    user.user.id,
+                    user.user.name,
+                    user.user.creation.inMs()
+            ));
+
+            pw_log.println(String.format("ADD-USER %s \"%s\" %s",
+                    user.user.id,
+                    user.user.name,
+                    user.user.creation.inMs()
+            ));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -259,16 +223,13 @@ public final class Chat {
     panel.register("u-sign-in", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? args.get(0) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (name.length() > 0) {
           final UserContext user = findUser(name);
           if (user == null) {
             System.out.format("ERROR: Failed to sign in as '%s'\n", name);
           } else {
             panels.push(createUserPanel(user));
-                                              //command user-id username creation-time
-            transactionLog.add(String.format("SIGN-IN-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
-            LOG.info(String.format("SIGN-IN-USER %s %s %s", user.user.id, user.user.name, user.user.creation));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -360,17 +321,28 @@ public final class Chat {
     panel.register("c-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? args.get(0) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = user.start(name);
           if (conversation == null) {
             System.out.println("ERROR: Failed to create new conversation");
           } else {
             panels.push(createConversationPanel(conversation));
-            transactionLog.add(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id (uuid of)convo-owner convo-title creation-time
-            LOG.info(String.format("ADD-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation));
+
+            //command convo-id (uuid of)convo-owner convo-title creation-time
+            transactionLog.add(String.format("ADD-CONVERSATION %s %s \"%s\" %s",
+                    conversation.conversation.id,
+                    conversation.conversation.owner,
+                    conversation.conversation.title,
+                    conversation.conversation.creation.inMs()
+            ));
+
+            pw_log.println(String.format("ADD-CONVERSATION %s %s \"%s\" %s",
+                    conversation.conversation.id,
+                    conversation.conversation.owner,
+                    conversation.conversation.title,
+                    conversation.conversation.creation.inMs()
+            ));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -386,17 +358,13 @@ public final class Chat {
     panel.register("c-join", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? args.get(0) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = find(name);
           if (conversation == null) {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
-            transactionLog.add(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation)); //command convo-id (UUid of)convo-owner convo-title creation-time
-            LOG.info(String.format("JOIN-CONVERSATION %s %s %s %s", conversation.conversation.id, conversation.conversation.owner,
-                    conversation.conversation.title, conversation.conversation.creation));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -491,13 +459,23 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String message = args.size() > 0 ? args.get(0) : "";
+        final String message = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
-          transactionLog.add(String.format("ADD-MESSAGE %s %s %s %s", messageContext.message.id, messageContext.message.author,
-                  messageContext.message.content, messageContext.message.creation)); //command message-id message-author message-content creation-time
-          LOG.info(String.format("ADD-MESSAGE %s %s %s %s", messageContext.message.id, messageContext.message.author,
-                  messageContext.message.content, messageContext.message.creation));
+          transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
+                  messageContext.message.id,
+                  messageContext.message.author,
+                  conversation.conversation.id,
+                  messageContext.message.content,
+                  messageContext.message.creation.inMs()
+          )); //command message-id message-author message-content creation-time
+          pw_log.println(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
+                  messageContext.message.id,
+                  messageContext.message.author,
+                  conversation.conversation.id,
+                  messageContext.message.content,
+                  messageContext.message.creation.inMs()
+          ));
         } else {
           System.out.println("ERROR: Messages must contain text");
         }

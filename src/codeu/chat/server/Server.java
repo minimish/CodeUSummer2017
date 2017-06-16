@@ -15,9 +15,7 @@
 
 package codeu.chat.server;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
@@ -25,6 +23,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import codeu.chat.client.core.Context;
 import codeu.chat.common.*;
 import codeu.chat.util.Logger;
 import codeu.chat.util.Serializers;
@@ -65,6 +64,13 @@ public final class Server {
     this.secret = secret;
     this.controller = new Controller(id, model);
     this.relay = relay;
+
+    // Whenever a new Chat session is made, reload the data from the log
+    try {
+      reloadOldData();
+    } catch (Exception e){
+      System.out.println("Could not load transaction log.");
+    }
 
     // New Message - A client wants to add a new message to the back end.
     this.commands.put(NetworkCode.NEW_MESSAGE_REQUEST, new Command() {
@@ -199,6 +205,76 @@ public final class Server {
         timeline.scheduleIn(RELAY_REFRESH_MS, this);
       }
     });
+  }
+
+  private void reloadOldData() throws IOException {
+    // Open the transaction log file for reading
+    FileReader fileReader = new FileReader("data/transaction_log.txt");
+    BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+    // Read the header lines of each transaction log
+    String line = bufferedReader.readLine();
+
+    while(line != null) {
+      String[] logInfo = line.split(" ");
+
+      // Three pieces of data applicable to all log elements: it's command type, Uuid, and Time in milliseconds
+      String commandType = logInfo[0];
+      Uuid commandUuid = Uuid.parse(logInfo[1]);
+      Time commandCreation = Time.fromMs(Long.parseLong(logInfo[logInfo.length - 1]));
+
+      // USER reload
+      if (commandType.equals("ADD-USER")) {
+        int i = 2;
+        // For user-related commands 3rd element will be user's chosen name
+        String userName = logInfo[i];
+
+        // Keep appending username data until reaching a terminal end quote
+        while(i < logInfo.length && !userName.substring(userName.length() - 1).equals("\""))
+          userName += " " + logInfo[++i];
+
+        // Create a new user based on it's unique contents, as well as it's username without quotes
+        controller.newUser(commandUuid, userName.substring(1, userName.length() - 1), commandCreation);
+      }
+
+      // CONVERSATION reload
+      else if (commandType.equals("ADD-CONVERSATION")) {
+        // For convo/message commands 3rd element is creator's NUMERIC ID (UUID not name)
+        Uuid ownerUuid = Uuid.parse(logInfo[2]);
+
+        int i = 3;
+        // For convo commands 4th element is convo name, for message commands 4th element is message content
+        String convoTitle = logInfo[i];
+
+        // Keep appending conversation title data until reaching a terminal end quote
+        while(i < logInfo.length && !convoTitle.substring(convoTitle.length() - 1).equals("\""))
+          convoTitle += " " + logInfo[++i];
+
+        controller.newConversation(commandUuid, convoTitle.substring(1, convoTitle.length() - 1), ownerUuid, commandCreation);
+      }
+
+      // MESSAGE reload
+      else if (commandType.equals("ADD-MESSAGE")) {
+        // For convo/message commands 3rd element is creator's NUMERIC ID (UUID not name)
+        Uuid ownerUuid = Uuid.parse(logInfo[2]);
+        Uuid convoUuid = Uuid.parse(logInfo[3]);
+
+        int i = 4;
+        // For convo commands 5th element is convo name, for message commands 4th element is message content
+        String messageContent = logInfo[i];
+
+        // Keep appending message data until reaching a terminal end quote
+        while(i < logInfo.length && !messageContent.substring(messageContent.length() - 1).equals("\""))
+          messageContent += " " + logInfo[++i];
+
+        controller.newMessage(commandUuid, ownerUuid, convoUuid, messageContent.substring(1, messageContent.length() - 1), commandCreation);
+      }
+
+      line = bufferedReader.readLine();
+    }
+
+    fileReader.close();
+    bufferedReader.close();
   }
 
   public void handleConnection(final Connection connection) {
