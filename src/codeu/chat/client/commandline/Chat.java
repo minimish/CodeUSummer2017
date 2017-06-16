@@ -23,12 +23,15 @@ import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
 import codeu.chat.util.Tokenizer;
-import codeu.chat.util.Logger;
+import codeu.chat.util.Time;
 
 public final class Chat {
 
   private static final File logFile = new File("data/transaction_log.txt");
   private static PrintWriter pw_log;
+
+  private static Time lastLogBackup;
+  private static final long BACKUP_RATE_IN_MS = 60000;
 
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
@@ -49,6 +52,7 @@ public final class Chat {
   public Chat(Context context) {
 
     this.panels.push(createRootPanel(context));
+    lastLogBackup = Time.now();
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
@@ -65,8 +69,11 @@ public final class Chat {
 
   // Transfers all data in the Queue to write to the log
   private void transferQueueToLog(){
-    while(!transactionLog.isEmpty())
+    while(!transactionLog.isEmpty()){
       pw_log.println(transactionLog.pop());
+      pw_log.flush();
+    }
+
   }
 
   // HANDLE COMMAND
@@ -88,15 +95,24 @@ public final class Chat {
     final String command = args.get(0);
     args.remove(0);
 
+    // Evaluate if it is time to transfer data from queue to disk, then call the transferQueueToLog() method defined
+    // above and update the last backup time
+    Time currentTime = Time.now();
+    if(currentTime.inMs() - lastLogBackup.inMs() >= BACKUP_RATE_IN_MS){
+      transferQueueToLog();
+      lastLogBackup = currentTime;
+    }
+
+
     // Because "exit" and "back" are applicable to every panel, handle
     // those commands here to avoid having to implement them for each
     // panel.
 
     if ("exit".equals(command)) {
       // The user does not want to process any more commands
+      transferQueueToLog();
 
       // Flush out the buffer contents and close file
-      pw_log.flush();
       pw_log.close();
       return false;
     }
@@ -109,9 +125,6 @@ public final class Chat {
 
     if (panels.peek().handleCommand(command, args)) {
       // the command was handled
-
-      // TODO: Add an if statement evaluating if it is time to transfer data from queue to disk,
-      // then call the transferQueueToLog() method defined above
 
       // Flush out buffer to ensure that every command gets written to file immediately
       pw_log.flush();
@@ -196,12 +209,6 @@ public final class Chat {
 
             //command user-id username creation-time
             transactionLog.add(String.format("ADD-USER %s \"%s\" %s",
-                    user.user.id,
-                    user.user.name,
-                    user.user.creation.inMs()
-            ));
-
-            pw_log.println(String.format("ADD-USER %s \"%s\" %s",
                     user.user.id,
                     user.user.name,
                     user.user.creation.inMs()
@@ -336,13 +343,6 @@ public final class Chat {
                     conversation.conversation.title,
                     conversation.conversation.creation.inMs()
             ));
-
-            pw_log.println(String.format("ADD-CONVERSATION %s %s \"%s\" %s",
-                    conversation.conversation.id,
-                    conversation.conversation.owner,
-                    conversation.conversation.title,
-                    conversation.conversation.creation.inMs()
-            ));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -469,13 +469,6 @@ public final class Chat {
                   messageContext.message.content,
                   messageContext.message.creation.inMs()
           )); //command message-id message-author message-content creation-time
-          pw_log.println(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
-                  messageContext.message.id,
-                  messageContext.message.author,
-                  conversation.conversation.id,
-                  messageContext.message.content,
-                  messageContext.message.creation.inMs()
-          ));
         } else {
           System.out.println("ERROR: Messages must contain text");
         }
