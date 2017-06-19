@@ -17,6 +17,8 @@ package codeu.chat.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashSet;
+import java.util.Set;
 
 import codeu.chat.util.Serializer;
 import codeu.chat.util.Serializers;
@@ -51,6 +53,8 @@ public final class User {
   public final Uuid id;
   public final String name;
   public final Time creation;
+  //set holding UuIDs of convos and users that this user follows
+  public Set interests = new HashSet<Uuid>();
 
   public User(Uuid id, String name, Time creation) {
 
