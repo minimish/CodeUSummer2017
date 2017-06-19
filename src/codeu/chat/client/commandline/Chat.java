@@ -71,9 +71,8 @@ public final class Chat {
   private void transferQueueToLog(){
     while(!transactionLog.isEmpty()){
       pw_log.println(transactionLog.pop());
-      pw_log.flush();
     }
-
+    pw_log.flush();
   }
 
   // HANDLE COMMAND
@@ -199,7 +198,7 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         final UserContext user = context.create(name);
 
         if (name.length() > 0) {
@@ -230,7 +229,7 @@ public final class Chat {
     panel.register("u-sign-in", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final UserContext user = findUser(name);
           if (user == null) {
@@ -328,7 +327,7 @@ public final class Chat {
     panel.register("c-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = user.start(name);
           if (conversation == null) {
@@ -358,7 +357,7 @@ public final class Chat {
     panel.register("c-join", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = find(name);
           if (conversation == null) {
@@ -459,7 +458,7 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String message = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String message = args.size() > 0 ? String.join(" ", args) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
           transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
