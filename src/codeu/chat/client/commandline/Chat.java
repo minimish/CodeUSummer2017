@@ -56,8 +56,7 @@ public final class Chat {
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
-      if(!logFile.createNewFile())
-        System.out.println("Successfully restored last logged server state.");
+      logFile.createNewFile();
 
       // Open the file as a PrintWriter and set file writing options to append
       pw_log = new PrintWriter(new BufferedWriter(new FileWriter("data/transaction_log.txt", true)));

@@ -30,7 +30,7 @@ import codeu.chat.util.connections.ConnectionSource;
 // This is the view component of the Model-View-Controller pattern used by the
 // the client to retrieve readonly data from the server. All methods are blocking
 // calls.
-final class View implements BasicView {
+public class View implements BasicView {
 
   private final static Logger.Log LOG = Logger.newLog(View.class);
 

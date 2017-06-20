@@ -258,6 +258,8 @@ public final class Server {
       line = bufferedReader.readLine();
     }
 
+    LOG.info("Successfully restored last logged server state.");
+
     fileReader.close();
     bufferedReader.close();
   }
