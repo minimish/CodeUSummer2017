@@ -30,9 +30,6 @@ public final class Chat {
   private static final File logFile = new File("data/transaction_log.txt");
   private static PrintWriter pw_log;
 
-  private static Time lastLogBackup;
-  private static final long BACKUP_RATE_IN_MS = 60000;
-
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
    * to keep track of commands for the transaction log and chat
@@ -52,7 +49,6 @@ public final class Chat {
   public Chat(Context context) {
 
     this.panels.push(createRootPanel(context));
-    lastLogBackup = Time.now();
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
@@ -67,7 +63,7 @@ public final class Chat {
   }
 
   // Transfers all data in the Queue to write to the log
-  private void transferQueueToLog(){
+  public void transferQueueToLog(){
     while(!transactionLog.isEmpty()){
       pw_log.println(transactionLog.pop());
     }
@@ -93,15 +89,6 @@ public final class Chat {
     final String command = args.get(0);
     args.remove(0);
 
-    // Evaluate if it is time to transfer data from queue to disk, then call the transferQueueToLog() method defined
-    // above and update the last backup time
-    Time currentTime = Time.now();
-    if(currentTime.inMs() - lastLogBackup.inMs() >= BACKUP_RATE_IN_MS){
-      transferQueueToLog();
-      lastLogBackup = currentTime;
-    }
-
-
     // Because "exit" and "back" are applicable to every panel, handle
     // those commands here to avoid having to implement them for each
     // panel.
@@ -123,9 +110,6 @@ public final class Chat {
 
     if (panels.peek().handleCommand(command, args)) {
       // the command was handled
-
-      // Flush out buffer to ensure that every command gets written to file immediately
-      pw_log.flush();
       return true;
     }
 
