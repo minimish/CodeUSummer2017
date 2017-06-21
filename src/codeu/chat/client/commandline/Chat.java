@@ -23,15 +23,11 @@ import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
 import codeu.chat.util.Tokenizer;
-import codeu.chat.util.Time;
 
 public final class Chat {
 
-  private static final File logFile = new File("data/transaction_log.txt");
+  private static File logFile;
   private static PrintWriter pw_log;
-
-  private static Time lastLogBackup;
-  private static final long BACKUP_RATE_IN_MS = 60000;
 
   //used to access Chat's users from the user panel for interest system feature
   private Context rootPanelContext;
@@ -52,31 +48,35 @@ public final class Chat {
   // panel all it needs to do is pop the top panel.
   private final Stack<Panel> panels = new Stack<>();
 
-  public Chat(Context context) {
+  public Chat(Context context){
 
     this.panels.push(createRootPanel(context));
-    lastLogBackup = Time.now();
+    logFile = new File("data/transaction_log.txt");
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
-      if(!logFile.createNewFile())
-        System.out.println("Successfully restored last logged server state.");
+      logFile.createNewFile();
 
       // Open the file as a PrintWriter and set file writing options to append
-      pw_log = new PrintWriter(new BufferedWriter(new FileWriter("data/transaction_log.txt", true)));
+      pw_log = new PrintWriter(new BufferedWriter(new FileWriter(logFile, true)));
     }
     catch (Exception ex){
       System.out.println("Unable to load transaction log.");
     }
+
+  }
+
+  public Chat(Context context, StringWriter stringWriter) {
+    this.panels.push(createRootPanel(context));
+    pw_log = new PrintWriter(stringWriter);
   }
 
   // Transfers all data in the Queue to write to the log
-  private void transferQueueToLog(){
+  public void transferQueueToLog(){
     while(!transactionLog.isEmpty()){
       pw_log.println(transactionLog.pop());
-      pw_log.flush();
     }
-
+    pw_log.flush();
   }
 
   // HANDLE COMMAND
@@ -97,15 +97,6 @@ public final class Chat {
     //getting the tokens/Strings as commands
     final String command = args.get(0);
     args.remove(0);
-
-    // Evaluate if it is time to transfer data from queue to disk, then call the transferQueueToLog() method defined
-    // above and update the last backup time
-    Time currentTime = Time.now();
-    if(currentTime.inMs() - lastLogBackup.inMs() >= BACKUP_RATE_IN_MS){
-      transferQueueToLog();
-      lastLogBackup = currentTime;
-    }
-
 
     // Because "exit" and "back" are applicable to every panel, handle
     // those commands here to avoid having to implement them for each
@@ -128,9 +119,6 @@ public final class Chat {
 
     if (panels.peek().handleCommand(command, args)) {
       // the command was handled
-
-      // Flush out buffer to ensure that every command gets written to file immediately
-      pw_log.flush();
       return true;
     }
 
@@ -203,14 +191,13 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         final UserContext user = context.create(name);
 
         if (name.length() > 0) {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
-
             //command user-id username creation-time
             transactionLog.add(String.format("ADD-USER %s \"%s\" %s",
                     user.user.id,
@@ -234,7 +221,7 @@ public final class Chat {
     panel.register("u-sign-in", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final UserContext user = findUser(name);
           if (user == null) {
@@ -342,7 +329,7 @@ public final class Chat {
     panel.register("c-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = user.start(name);
           if (conversation == null) {
@@ -372,7 +359,7 @@ public final class Chat {
     panel.register("c-join", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = find(name);
           if (conversation == null) {
@@ -631,7 +618,7 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String message = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String message = args.size() > 0 ? String.join(" ", args) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
           transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",

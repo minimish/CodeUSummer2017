@@ -29,7 +29,7 @@ import codeu.chat.util.Uuid;
 import codeu.chat.util.connections.Connection;
 import codeu.chat.util.connections.ConnectionSource;
 
-final class Controller implements BasicController {
+public class Controller implements BasicController {
 
   private final static Logger.Log LOG = Logger.newLog(Controller.class);
 
