@@ -24,7 +24,7 @@ import codeu.chat.common.User;
 import codeu.chat.util.Uuid;
 import codeu.chat.util.connections.ConnectionSource;
 
-public final class Context {
+public class Context {
 
   private final BasicView view;
   private final Controller controller;
@@ -52,5 +52,4 @@ public final class Context {
   public ServerInfo getInfo() {
     return ((View)view).getInfo();
   }
-
 }

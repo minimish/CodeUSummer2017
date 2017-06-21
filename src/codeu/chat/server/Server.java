@@ -15,9 +15,7 @@
 
 package codeu.chat.server;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
@@ -25,12 +23,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import codeu.chat.client.core.Context;
 import codeu.chat.common.*;
-import codeu.chat.util.Logger;
-import codeu.chat.util.Serializers;
-import codeu.chat.util.Time;
-import codeu.chat.util.Timeline;
-import codeu.chat.util.Uuid;
+import codeu.chat.util.*;
 import codeu.chat.util.connections.Connection;
 
 public final class Server {
@@ -65,6 +60,13 @@ public final class Server {
     this.secret = secret;
     this.controller = new Controller(id, model);
     this.relay = relay;
+
+    // Whenever a new Server starts up, reload the data from the log
+    try {
+      reloadOldData();
+    } catch (Exception e){
+      System.out.println("Could not load transaction log.");
+    }
 
     // New Message - A client wants to add a new message to the back end.
     this.commands.put(NetworkCode.NEW_MESSAGE_REQUEST, new Command() {
@@ -201,6 +203,67 @@ public final class Server {
     });
   }
 
+  private void reloadOldData() throws IOException {
+    // Open the transaction log file for reading
+    FileReader fileReader = new FileReader("data/transaction_log.txt");
+    BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+    // Read the header lines of each transaction log
+    String line = bufferedReader.readLine();
+
+    while(line != null) {
+
+      // Instantiate a Tokenizer to parse through log's data
+      Tokenizer logInfo = new Tokenizer(line);
+
+      // Three pieces of data applicable to all log elements: it's command type, Uuid, and Time in milliseconds
+      String commandType = logInfo.next();
+      Uuid commandUuid = Uuid.parse(logInfo.next());
+
+      // USER reload
+      if (commandType.equals("ADD-USER")) {
+        // For user-related commands 3rd element will be user's chosen name
+        String userName = logInfo.next();
+        Time commandCreation = Time.fromMs(Long.parseLong(logInfo.next()));
+
+        // Create a new user based on it's unique contents, as well as it's username without quotes
+        controller.newUser(commandUuid, userName, commandCreation);
+      }
+
+      // CONVERSATION reload
+      else if (commandType.equals("ADD-CONVERSATION")) {
+        // For convo/message commands 3rd element is creator's NUMERIC ID (UUID not name)
+        Uuid ownerUuid = Uuid.parse(logInfo.next());
+
+        // For convo commands 4th element is convo name, for message commands 4th element is message content
+        String convoTitle = logInfo.next();
+        Time commandCreation = Time.fromMs(Long.parseLong(logInfo.next()));
+
+        controller.newConversation(commandUuid, convoTitle, ownerUuid, commandCreation);
+      }
+
+      // MESSAGE reload
+      else if (commandType.equals("ADD-MESSAGE")) {
+        // For convo/message commands 3rd element is creator's NUMERIC ID (UUID not name)
+        Uuid ownerUuid = Uuid.parse(logInfo.next());
+        Uuid convoUuid = Uuid.parse(logInfo.next());
+
+        // For convo commands 5th element is convo name, for message commands 4th element is message content
+        String messageContent = logInfo.next();
+        Time commandCreation = Time.fromMs(Long.parseLong(logInfo.next()));
+
+        controller.newMessage(commandUuid, ownerUuid, convoUuid, messageContent, commandCreation);
+      }
+
+      line = bufferedReader.readLine();
+    }
+
+    LOG.info("Successfully restored last logged server state.");
+
+    fileReader.close();
+    bufferedReader.close();
+  }
+
   public void handleConnection(final Connection connection) {
     timeline.scheduleNow(new Runnable() {
       @Override
@@ -220,7 +283,6 @@ public final class Server {
             command.onMessage(connection.in(), connection.out());
             LOG.info("Connection accepted");
           }
-
         } catch (Exception ex) {
 
           LOG.error(ex, "Exception while handling connection.");

@@ -15,6 +15,7 @@
 package codeu.chat;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -22,12 +23,16 @@ import codeu.chat.client.commandline.Chat;
 import codeu.chat.client.core.Context;
 import codeu.chat.util.Logger;
 import codeu.chat.util.RemoteAddress;
+import codeu.chat.util.Time;
 import codeu.chat.util.connections.ClientConnectionSource;
 import codeu.chat.util.connections.ConnectionSource;
 
 final class ClientMain {
 
   private static final Logger.Log LOG = Logger.newLog(ClientMain.class);
+
+  private static Time lastLogBackup;
+  private static final long BACKUP_RATE_IN_MS = 30000;
 
   public static void main(String [] args) {
 
@@ -52,9 +57,20 @@ final class ClientMain {
 
     boolean keepRunning = true;
 
+    lastLogBackup = Time.now();
+
     try (final BufferedReader input = new BufferedReader(new InputStreamReader(System.in))) {
       while (keepRunning) {
         System.out.print(">>> ");
+
+        // Evaluate if it is time to transfer data from queue to disk, then call the transferQueueToLog() method defined
+        // above and update the last backup time
+        Time currentTime = Time.now();
+        if(currentTime.inMs() - lastLogBackup.inMs() >= BACKUP_RATE_IN_MS){
+          chat.transferQueueToLog();
+          lastLogBackup = currentTime;
+        }
+
         keepRunning = chat.handleCommand(input.readLine().trim());
       }
     } catch (IOException ex) {

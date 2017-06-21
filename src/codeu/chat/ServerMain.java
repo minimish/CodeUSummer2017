@@ -102,7 +102,6 @@ final class ServerMain {
     while (true) {
 
       try {
-
         LOG.info("Established connection...");
         final Connection connection = serverSource.connect();
         LOG.info("Connection established.");
