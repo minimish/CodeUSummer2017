@@ -23,11 +23,10 @@ import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
 import codeu.chat.util.Tokenizer;
-import codeu.chat.util.Time;
 
 public final class Chat {
 
-  private static final File logFile = new File("data/transaction_log.txt");
+  private static File logFile;
   private static PrintWriter pw_log;
 
   /**
@@ -46,20 +45,27 @@ public final class Chat {
   // panel all it needs to do is pop the top panel.
   private final Stack<Panel> panels = new Stack<>();
 
-  public Chat(Context context) {
+  public Chat(Context context){
 
     this.panels.push(createRootPanel(context));
+    logFile = new File("data/transaction_log.txt");
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
       logFile.createNewFile();
 
       // Open the file as a PrintWriter and set file writing options to append
-      pw_log = new PrintWriter(new BufferedWriter(new FileWriter("data/transaction_log.txt", true)));
+      pw_log = new PrintWriter(new BufferedWriter(new FileWriter(logFile, true)));
     }
     catch (Exception ex){
       System.out.println("Unable to load transaction log.");
     }
+
+  }
+
+  public Chat(Context context, StringWriter stringWriter) {
+    this.panels.push(createRootPanel(context));
+    pw_log = new PrintWriter(stringWriter);
   }
 
   // Transfers all data in the Queue to write to the log
@@ -188,7 +194,6 @@ public final class Chat {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
-
             //command user-id username creation-time
             transactionLog.add(String.format("ADD-USER %s \"%s\" %s",
                     user.user.id,

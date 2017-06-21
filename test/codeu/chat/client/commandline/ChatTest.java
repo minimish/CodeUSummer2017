@@ -9,13 +9,20 @@ import codeu.chat.util.Uuid;
 import codeu.chat.util.connections.ClientConnectionSource;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runners.model.TestClass;
 
 import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,8 +37,6 @@ public final class ChatTest {
     private ConversationContext convoContext;
     private Message message;
     private MessageContext messageContext;
-
-    private TemporaryFolder folder = new TemporaryFolder();
 
     private class TestController extends Controller {
 
@@ -129,11 +134,22 @@ public final class ChatTest {
     }
 
     private Chat chat;
+    private TestView view = new TestView();
+    private TestController controller = new TestController();
+
+    private File testLog;
+    private StringWriter sw_log;
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Before
     public void doBefore() throws IOException{
-        TestView view = new TestView();
-        TestController controller = new TestController();
+        view = new TestView();
+        controller = new TestController();
+
+        testLog = temporaryFolder.newFile("transaction_log.txt");
+        sw_log = new StringWriter();
 
         serverInfo = new ServerInfo();
         user = new User(Uuid.NULL, "username", Time.now());
@@ -141,24 +157,29 @@ public final class ChatTest {
         message = new Message(Uuid.NULL, Uuid.NULL, Uuid.NULL, Time.now(), Uuid.NULL, "message");
 
         userContext = new UserContext(user, view, controller);
-        convoContext = new ConversationContext(user, convo, view, controller);
+        convoContext = new ConversationContext(user, convo, view, this.controller);
         messageContext = new MessageContext(message, view);
 
-        chat = new Chat(new TestContext(view, controller));
+        chat = new Chat(new TestContext(view, controller), sw_log);
     }
 
     @Test
     public void addUserTest() throws Exception {
-        boolean addUser = chat.handleCommand("u-sign-in username");
+        boolean addUser = chat.handleCommand("u-add dita");
+
+        TimeUnit.SECONDS.sleep(35);
+        chat.handleCommand("u-list");
+
         assertEquals(true, addUser);
+        assertEquals(true, sw_log.toString().contains("ADD-USER"));
     }
 
     @Test
     public void addConvoTest() throws Exception {
         chat.handleCommand("u-sign-in username");
-
-        boolean addConvo = chat.handleCommand("c-join convo");
+        boolean addConvo = chat.handleCommand("c-add convo");
         assertEquals(true, addConvo);
+        assertEquals(true, sw_log.toString().contains("ADD-CONVERSATION"));
     }
 
     @Test
