@@ -24,16 +24,19 @@ import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
 import codeu.chat.util.Time;
 import codeu.chat.util.Tokenizer;
+import codeu.chat.util.Uuid;
 
 public final class Chat {
 
-  private static File logFile;
+  private static final File logFile = new File("data/transaction_log.txt");
   private static PrintWriter pw_log;
 
   //used to access Chat's users from the user panel for interest system feature
   private Context rootPanelContext;
   private Time lastUpdate;
   private ArrayDeque<String> updates = new ArrayDeque<>();
+  //used to access Chat's conversations from outside the user panel
+  private UserContext userPanelContext;
 
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
@@ -51,35 +54,30 @@ public final class Chat {
   // panel all it needs to do is pop the top panel.
   private final Stack<Panel> panels = new Stack<>();
 
-  public Chat(Context context){
+  public Chat(Context context) {
 
     this.panels.push(createRootPanel(context));
-    logFile = new File("data/transaction_log.txt");
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
-      logFile.createNewFile();
+      if(!logFile.createNewFile())
+        System.out.println("Successfully restored last logged server state.");
 
       // Open the file as a PrintWriter and set file writing options to append
-      pw_log = new PrintWriter(new BufferedWriter(new FileWriter(logFile, true)));
+      pw_log = new PrintWriter(new BufferedWriter(new FileWriter("data/transaction_log.txt", true)));
     }
     catch (Exception ex){
       System.out.println("Unable to load transaction log.");
     }
-
-  }
-
-  public Chat(Context context, StringWriter stringWriter) {
-    this.panels.push(createRootPanel(context));
-    pw_log = new PrintWriter(stringWriter);
   }
 
   // Transfers all data in the Queue to write to the log
-  public void transferQueueToLog(){
+  private void transferQueueToLog(){
     while(!transactionLog.isEmpty()){
       pw_log.println(transactionLog.pop());
+      pw_log.flush();
     }
-    pw_log.flush();
+
   }
 
   // HANDLE COMMAND
@@ -122,6 +120,9 @@ public final class Chat {
 
     if (panels.peek().handleCommand(command, args)) {
       // the command was handled
+
+      // Flush out buffer to ensure that every command gets written to file immediately
+      pw_log.flush();
       return true;
     }
 
@@ -194,13 +195,14 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         final UserContext user = context.create(name);
 
         if (name.length() > 0) {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
+
             //command user-id username creation-time
             transactionLog.add(String.format("ADD-USER %s \"%s\" %s",
                     user.user.id,
@@ -224,7 +226,7 @@ public final class Chat {
     panel.register("u-sign-in", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (name.length() > 0) {
           final UserContext user = findUser(name);
           if (user == null) {
@@ -235,17 +237,6 @@ public final class Chat {
         } else {
           System.out.println("ERROR: Missing <username>");
         }
-      }
-
-      // Find the first user with the given name and return a user context
-      // for that user. If no user is found, the function will return null.
-      private UserContext findUser(String name) {
-        for (final UserContext user : context.allUsers()) {
-          if (user.user.name.equals(name)) {
-            return user;
-          }
-        }
-        return null;
       }
     });
 
@@ -272,6 +263,7 @@ public final class Chat {
   private Panel createUserPanel(final UserContext user) {
 
     final Panel panel = new Panel();
+    userPanelContext = user;
 
     // HELP
     //
@@ -332,7 +324,7 @@ public final class Chat {
     panel.register("c-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = user.start(name);
           if (conversation == null) {
@@ -362,7 +354,7 @@ public final class Chat {
     panel.register("c-join", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = find(name);
           if (conversation == null) {
@@ -402,7 +394,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //add specified conversation to user's interests
-            user.user.convoInterests.add(conversation);
+            user.user.convoInterests.add(conversation.conversation.id);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -443,17 +435,6 @@ public final class Chat {
           System.out.println("ERROR: Missing <title>");
         }
       }
-
-      // Find the first conversation with the given name and return its context.
-      // If no conversation has the given name, this will return null.
-      private ConversationContext findConversation(String title) {
-        for (final ConversationContext conversation : user.conversations()) {
-          if (title.equals(conversation.conversation.title)) {
-            return conversation;
-          }
-        }
-        return null;
-      }
     });
 
     //U-INTEREST ADD (adds user to user's interests)
@@ -471,22 +452,11 @@ public final class Chat {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //adding specified user's Uuid to current user's interests
-            user.user.userInterests.add(interestUser);
+            user.user.userInterests.add(interestUser.user.id);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
         }
-      }
-
-      // Find the first user with the given name and return a user context
-      // for that user. If no user is found, the function will return null.
-      private UserContext findUser(String name) {
-        for (final UserContext user : rootPanelContext.allUsers()) {
-          if (user.user.name.equals(name)) {
-            return user;
-          }
-        }
-        return null;
       }
     });
 
@@ -511,17 +481,6 @@ public final class Chat {
           System.out.println("ERROR: Missing <username>");
         }
       }
-
-      // Find the first user with the given name and return a user context
-      // for that user. If no user is found, the function will return null.
-      private UserContext findUser(String name) {
-        for (final UserContext user : rootPanelContext.allUsers()) {
-          if (user.user.name.equals(name)) {
-            return user;
-          }
-        }
-        return null;
-      }
     });
 
     //TODO status update command
@@ -538,44 +497,23 @@ public final class Chat {
     panel.register("status-update", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        lastUpdate = Time.now();
-
-        // Get the users this user follows
-        Set<UserContext> followedUsers = user.user.userInterests;
-
-        // If the user follows anyone, print out their updates
-        if(user.user.userInterests.size() > 0){
-          System.out.println("Followed Users:");
-          System.out.println();
-
-          // Check every user this user follows for their updates
-          for(UserContext users : followedUsers){
-            System.out.println("USER: " + users.user.name);
-            Set<ConversationContext> convoUpdates = getConversationUpdates(users, lastUpdate);
-
-            if(convoUpdates.size() > 0)
-              System.out.println(users.user.name + " has created the following conversations:");
-            // For every followed user, get their conversation updates
-            for(ConversationContext convo : convoUpdates)
-              System.out.println(convo.conversation.title);
-
-            // Check this followed user's conversations and see if any of them updated
-            Iterable<ConversationContext> convos = user.conversations();
-            if(convos.iterator().hasNext())
-              System.out.println(user.user.name + " has updated the following conversations:");
-
-            for(ConversationContext c : convos)
-              if(isConversationUpdated(c, lastUpdate))
-                System.out.println(c.conversation.title);
-          }
-        }
-        else {
-          System.out.println("No followed users.");
+        System.out.println("Followed Users:");
+        //every user Uuid in interests Set should be printed with all their info
+        for (Uuid userID : user.user.userInterests){
+          UserContext followedUser = findUser(userID);
+          //System.out.pr
+          //outprint what convos they've contributed to and what convo's they've created
         }
 
-        System.out.println("Followed Conversations:");
-        //every conversation Uuid in interests Set should be printed with all their info
-
+        System.out.println("Followed Conversations:\n");
+        //every followed conversation's name and messages added since last update is printed
+        for (Uuid convoID : user.user.convoInterests){
+          ConversationContext followedConvo = findConversation(convoID);
+          System.out.format("Name: %s\n", followedConvo.conversation.title);
+          System.out.format("Messages added since last status upadate: %s\n", followedConvo.conversation.messageCounter);
+          //resetting message counter since it counts messages since last status update
+          followedConvo.conversation.messageCounter = 0;
+        }
       }
     });
 
@@ -656,9 +594,13 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String message = args.size() > 0 ? String.join(" ", args) : "";
+        final String message = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
+          //if this conversation is in the user's interests, add to the messages contributed counter
+          if (userPanelContext.user.convoInterests.contains(conversation.conversation.id)){
+            conversation.conversation.messageCounter++;
+          }
           transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
                   messageContext.message.id,
                   messageContext.message.author,
@@ -692,33 +634,49 @@ public final class Chat {
     return panel;
   }
 
-  private boolean isConversationUpdated(ConversationContext convo, Time lastUpdate){
-    return convo.lastMessage().message.creation.inMs() > lastUpdate.inMs();
-  }
+  //methods below are helper methods to get a user or conversation from name or Uuid
 
-  private Set<MessageContext> getMessageUpdates(ConversationContext convo, Time lastUpdate){
-    Set<MessageContext> messages = new HashSet<>();
-
-    MessageContext current = convo.lastMessage();
-    while(current != null){
-      if(current.message.creation.inMs() > lastUpdate.inMs())
-        messages.add(current);
-      current = current.next();
+  // Find the first user with the given name and return a user context
+  // for that user. If no user is found, the function will return null.
+  private UserContext findUser(String name) {
+    for (final UserContext user : rootPanelContext.allUsers()) {
+      if (user.user.name.equals(name)) {
+        return user;
+      }
     }
-
-    return messages;
+    return null;
   }
 
-  private Set<ConversationContext> getConversationUpdates(UserContext user, Time lastUpdate){
-    Set<ConversationContext> convo = new HashSet<>();
-    Iterator<ConversationContext> convoIterator = user.conversations().iterator();
-
-    ConversationContext currentConvo;
-
-    while((currentConvo = convoIterator.next()) != null){
-      if(currentConvo.conversation.creation.inMs() > lastUpdate.inMs())
-        convo.add(currentConvo);
+  // Finds the first user with the given Uuid and returns a user context
+  // for that user. If no user is found, the function will return null.
+  private UserContext findUser(Uuid id) {
+    for (final UserContext user : rootPanelContext.allUsers()) {
+      if (user.user.id.equals(id)) {
+        return user;
+      }
     }
-    return convo;
+    return null;
   }
+
+  // Find the first conversation with the given name and return its context.
+  // If no conversation has the given name, this will return null.
+  private ConversationContext findConversation(String title) {
+    for (final ConversationContext conversation : userPanelContext.conversations()) {
+      if (title.equals(conversation.conversation.title)) {
+        return conversation;
+      }
+    }
+    return null;
+  }
+
+  // Finds the first conversation with the given name and returns its context.
+  // If no conversation has the given name, this will return null.
+  private ConversationContext findConversation(Uuid id) {
+    for (final ConversationContext conversation : userPanelContext.conversations()) {
+      if (id.equals(conversation.conversation.id)) {
+        return conversation;
+      }
+     }
+    return null;
+   }
 }
