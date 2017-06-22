@@ -24,6 +24,7 @@ import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
 import codeu.chat.util.Tokenizer;
 import codeu.chat.util.Time;
+import codeu.chat.util.Uuid;
 
 public final class Chat {
 
@@ -33,8 +34,10 @@ public final class Chat {
   private static Time lastLogBackup;
   private static final long BACKUP_RATE_IN_MS = 60000;
 
-  //used to access Chat's users from the user panel for interest system feature
+  //used to access Chat's users from outside the root panel
   private Context rootPanelContext;
+  //used to access Chat's conversations from outside the user panel
+  private UserContext userPanelContext;
 
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
@@ -246,17 +249,6 @@ public final class Chat {
           System.out.println("ERROR: Missing <username>");
         }
       }
-
-      // Find the first user with the given name and return a user context
-      // for that user. If no user is found, the function will return null.
-      private UserContext findUser(String name) {
-        for (final UserContext user : context.allUsers()) {
-          if (user.user.name.equals(name)) {
-            return user;
-          }
-        }
-        return null;
-      }
     });
 
     panel.register("info", new Panel.Command() {
@@ -282,6 +274,7 @@ public final class Chat {
   private Panel createUserPanel(final UserContext user) {
 
     final Panel panel = new Panel();
+    userPanelContext = user;
 
     // HELP
     //
@@ -412,22 +405,11 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //add specified conversation to user's interests
-            user.user.interests.add(conversation.conversation.id);
+            user.user.convoInterests.add(conversation.conversation.id);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
         }
-      }
-
-      // Find the first conversation with the given name and return its context.
-      // If no conversation has the given name, this will return null.
-      private ConversationContext findConversation(String title) {
-        for (final ConversationContext conversation : user.conversations()) {
-          if (title.equals(conversation.conversation.title)) {
-            return conversation;
-          }
-        }
-        return null;
       }
     });
 
@@ -446,22 +428,11 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //if conversation is in interests it's removed, if not nothing is done
-            user.user.interests.remove(conversation.conversation.id);
+            user.user.convoInterests.remove(conversation.conversation.id);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
         }
-      }
-
-      // Find the first conversation with the given name and return its context.
-      // If no conversation has the given name, this will return null.
-      private ConversationContext findConversation(String title) {
-        for (final ConversationContext conversation : user.conversations()) {
-          if (title.equals(conversation.conversation.title)) {
-            return conversation;
-          }
-        }
-        return null;
       }
     });
 
@@ -480,22 +451,11 @@ public final class Chat {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //adding specified user's Uuid to current user's interests
-            user.user.interests.add(interestUser.user.id);
+            user.user.userInteressts.add(interestUser.user.id);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
         }
-      }
-
-      // Find the first user with the given name and return a user context
-      // for that user. If no user is found, the function will return null.
-      private UserContext findUser(String name) {
-        for (final UserContext user : rootPanelContext.allUsers()) {
-          if (user.user.name.equals(name)) {
-            return user;
-          }
-        }
-        return null;
       }
     });
 
@@ -514,22 +474,11 @@ public final class Chat {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //removing specified user from current user's interests
-            user.user.interests.remove(interestUser.user.id);
+            user.user.userInteressts.remove(interestUser.user.id);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
         }
-      }
-
-      // Find the first user with the given name and return a user context
-      // for that user. If no user is found, the function will return null.
-      private UserContext findUser(String name) {
-        for (final UserContext user : rootPanelContext.allUsers()) {
-          if (user.user.name.equals(name)) {
-            return user;
-          }
-        }
-        return null;
       }
     });
 
@@ -665,5 +614,51 @@ public final class Chat {
     // Now that the panel has all its commands registered, return the panel
     // so that it can be used.
     return panel;
+  }
+
+  //methods below are helper methods to get a user or conversation from name or Uuid
+
+  // Find the first user with the given name and return a user context
+  // for that user. If no user is found, the function will return null.
+  private UserContext findUser(String name) {
+    for (final UserContext user : rootPanelContext.allUsers()) {
+      if (user.user.name.equals(name)) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  // Finds the first user with the given Uuid and returns a user context
+  // for that user. If no user is found, the function will return null.
+  private UserContext findUser(Uuid id) {
+    for (final UserContext user : rootPanelContext.allUsers()) {
+      if (user.user.id.equals(id)) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  // Find the first conversation with the given name and return its context.
+  // If no conversation has the given name, this will return null.
+  private ConversationContext findConversation(String title) {
+    for (final ConversationContext conversation : userPanelContext.conversations()) {
+      if (title.equals(conversation.conversation.title)) {
+        return conversation;
+      }
+    }
+    return null;
+  }
+
+  // Finds the first conversation with the given name and returns its context.
+  // If no conversation has the given name, this will return null.
+  private ConversationContext findConversation(Uuid id) {
+    for (final ConversationContext conversation : userPanelContext.conversations()) {
+      if (id.equals(conversation.conversation.id)) {
+        return conversation;
+      }
+    }
+    return null;
   }
 }

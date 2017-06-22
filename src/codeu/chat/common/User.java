@@ -53,8 +53,10 @@ public final class User {
   public final Uuid id;
   public final String name;
   public final Time creation;
-  //set holding UuIDs of convos and users that this user follows
-  public Set interests = new HashSet<Uuid>();
+  //set holding UuIDs of conversations that this user follows
+  public Set convoInterests = new HashSet<Uuid>();
+  //set holding UuIDs of users that this user follows
+  public Set userInteressts = new HashSet<Uuid>();
 
   public User(Uuid id, String name, Time creation) {
 
