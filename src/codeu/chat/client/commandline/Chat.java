@@ -22,6 +22,7 @@ import codeu.chat.client.core.ConversationContext;
 import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
+import codeu.chat.util.Time;
 import codeu.chat.util.Tokenizer;
 
 public final class Chat {
@@ -31,6 +32,8 @@ public final class Chat {
 
   //used to access Chat's users from the user panel for interest system feature
   private Context rootPanelContext;
+  private Time lastUpdate;
+  private ArrayDeque<String> updates = new ArrayDeque<>();
 
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
@@ -285,15 +288,15 @@ public final class Chat {
         System.out.println("    Add a new conversation with the given title and join it as the current user.");
         System.out.println("  c-join <title>");
         System.out.println("    Join the conversation as the current user.");
-        System.out.println("  c-interest add <title>");
+        System.out.println("  c-interest-add <title>");
         System.out.println("    Adds the specified conversation to user's interests.");
-        System.out.println("  c-interest remove <title>");
+        System.out.println("  c-interest-remove <title>");
         System.out.println("    Removes the specified conversation from the user's interests.");
-        System.out.println("  u-interest add <username>");
+        System.out.println("  u-interest-add <username>");
         System.out.println("    Adds the specified user to user's interests.");
-        System.out.println("  u-interest remove <username>");
+        System.out.println("  u-interest-remove <username>");
         System.out.println("    Removes the specified user from the user's interests.");
-        System.out.println("  status update");
+        System.out.println("  status-update");
         System.out.println("    Lists what interests have been updated.");
         System.out.println("  info");
         System.out.println("    Display all info for the current user");
@@ -389,17 +392,17 @@ public final class Chat {
     //"c-interest add <conversation title>" will allow user to add specified
     //conversation to interests and receive status updates on conversation
     //
-    panel.register("c-interest add", new Panel.Command() {
+    panel.register("c-interest-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args){
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = findConversation(name);
           if (conversation == null) {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //add specified conversation to user's interests
-            user.user.interests.add(conversation.conversation.id);
+            user.user.convoInterests.add(conversation);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -416,6 +419,7 @@ public final class Chat {
         }
         return null;
       }
+
     });
 
     //C-INTEREST REMOVES (removes conversation to user's interests)
@@ -423,17 +427,17 @@ public final class Chat {
     //"c-interest add <conversation title>" will allow user to remove specified
     //conversation from interests and stop receiving status updates on conversation
     //
-    panel.register("c-interest remove", new Panel.Command() {
+    panel.register("c-interest-remove", new Panel.Command() {
       @Override
       public void invoke(List<String> args){
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = findConversation(name);
           if (conversation == null) {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //if conversation is in interests it's removed, if not nothing is done
-            user.user.interests.remove(conversation.conversation.id);
+            user.user.convoInterests.remove(conversation.conversation.id);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -457,17 +461,17 @@ public final class Chat {
     //"u-interest add <username>" will allow user to add specified
     //user to interests and receive status updates on conversation.
     //
-    panel.register("u-interest add", new Panel.Command() {
+    panel.register("u-interest-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final UserContext interestUser = findUser(name);
           if (user == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //adding specified user's Uuid to current user's interests
-            user.user.interests.add(interestUser.user.id);
+            user.user.userInterests.add(interestUser);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -491,17 +495,17 @@ public final class Chat {
     //"u-interest remove <username>" will allow user to remove specified
     //user from interests and stop receiving status updates on conversation.
     //
-    panel.register("u-interest remove", new Panel.Command() {
+    panel.register("u-interest-remove", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final UserContext interestUser = findUser(name);
           if (user == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //removing specified user from current user's interests
-            user.user.interests.remove(interestUser.user.id);
+            user.user.userInterests.remove(interestUser.user.id);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -531,14 +535,47 @@ public final class Chat {
     // For conversations of interest, prints how many messages have been
     // created since last update.
     //
-    panel.register("status update", new Panel.Command() {
+    panel.register("status-update", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        System.out.println("Followed Users:");
-        //every user Uuid in interests Set should be printed with all their info
+        lastUpdate = Time.now();
+
+        // Get the users this user follows
+        Set<UserContext> followedUsers = user.user.userInterests;
+
+        // If the user follows anyone, print out their updates
+        if(user.user.userInterests.size() > 0){
+          System.out.println("Followed Users:");
+          System.out.println();
+
+          // Check every user this user follows for their updates
+          for(UserContext users : followedUsers){
+            System.out.println("USER: " + users.user.name);
+            Set<ConversationContext> convoUpdates = getConversationUpdates(users, lastUpdate);
+
+            if(convoUpdates.size() > 0)
+              System.out.println(users.user.name + " has created the following conversations:");
+            // For every followed user, get their conversation updates
+            for(ConversationContext convo : convoUpdates)
+              System.out.println(convo.conversation.title);
+
+            // Check this followed user's conversations and see if any of them updated
+            Iterable<ConversationContext> convos = user.conversations();
+            if(convos.iterator().hasNext())
+              System.out.println(user.user.name + " has updated the following conversations:");
+
+            for(ConversationContext c : convos)
+              if(isConversationUpdated(c, lastUpdate))
+                System.out.println(c.conversation.title);
+          }
+        }
+        else {
+          System.out.println("No followed users.");
+        }
 
         System.out.println("Followed Conversations:");
         //every conversation Uuid in interests Set should be printed with all their info
+
       }
     });
 
@@ -555,6 +592,7 @@ public final class Chat {
         System.out.format("  Id   : UUID: %s\n", user.user.id);
       }
     });
+
 
     // Now that the panel has all its commands registered, return the panel
     // so that it can be used.
@@ -652,5 +690,35 @@ public final class Chat {
     // Now that the panel has all its commands registered, return the panel
     // so that it can be used.
     return panel;
+  }
+
+  private boolean isConversationUpdated(ConversationContext convo, Time lastUpdate){
+    return convo.lastMessage().message.creation.inMs() > lastUpdate.inMs();
+  }
+
+  private Set<MessageContext> getMessageUpdates(ConversationContext convo, Time lastUpdate){
+    Set<MessageContext> messages = new HashSet<>();
+
+    MessageContext current = convo.lastMessage();
+    while(current != null){
+      if(current.message.creation.inMs() > lastUpdate.inMs())
+        messages.add(current);
+      current = current.next();
+    }
+
+    return messages;
+  }
+
+  private Set<ConversationContext> getConversationUpdates(UserContext user, Time lastUpdate){
+    Set<ConversationContext> convo = new HashSet<>();
+    Iterator<ConversationContext> convoIterator = user.conversations().iterator();
+
+    ConversationContext currentConvo;
+
+    while((currentConvo = convoIterator.next()) != null){
+      if(currentConvo.conversation.creation.inMs() > lastUpdate.inMs())
+        convo.add(currentConvo);
+    }
+    return convo;
   }
 }

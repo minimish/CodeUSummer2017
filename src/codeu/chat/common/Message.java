@@ -17,6 +17,7 @@ package codeu.chat.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Comparator;
 
 import codeu.chat.util.Serializer;
 import codeu.chat.util.Serializers;
