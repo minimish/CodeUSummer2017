@@ -23,16 +23,12 @@ import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
 import codeu.chat.util.Tokenizer;
-import codeu.chat.util.Time;
 import codeu.chat.util.Uuid;
 
 public final class Chat {
 
   private static final File logFile = new File("data/transaction_log.txt");
   private static PrintWriter pw_log;
-
-  private static Time lastLogBackup;
-  private static final long BACKUP_RATE_IN_MS = 60000;
 
   //used to access Chat's users from outside the root panel
   private Context rootPanelContext;
@@ -58,7 +54,6 @@ public final class Chat {
   public Chat(Context context) {
 
     this.panels.push(createRootPanel(context));
-    lastLogBackup = Time.now();
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
@@ -107,15 +102,6 @@ public final class Chat {
     final String command = args.get(0);
     args.remove(0);
 
-    // Evaluate if it is time to transfer data from queue to disk, then call the transferQueueToLog() method defined
-    // above and update the last backup time
-    Time currentTime = Time.now();
-    if(currentTime.inMs() - lastLogBackup.inMs() >= BACKUP_RATE_IN_MS){
-      transferQueueToLog();
-      lastLogBackup = currentTime;
-    }
-
-
     // Because "exit" and "back" are applicable to every panel, handle
     // those commands here to avoid having to implement them for each
     // panel.
@@ -163,6 +149,7 @@ public final class Chat {
   private Panel createRootPanel(final Context context) {
 
     final Panel panel = new Panel();
+    rootPanelContext = context;
 
     // HELP
     //
@@ -290,6 +277,7 @@ public final class Chat {
   private Panel createUserPanel(final UserContext user) {
 
     final Panel panel = new Panel();
+    userPanelContext = user;
 
     // HELP
     //
