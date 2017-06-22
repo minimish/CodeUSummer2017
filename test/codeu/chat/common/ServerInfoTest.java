@@ -1,7 +1,6 @@
 package codeu.chat.common;
 
 import static org.junit.Assert.*;
-
 import java.io.IOException;
 
 import codeu.chat.util.Uuid;
