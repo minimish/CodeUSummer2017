@@ -22,19 +22,17 @@ import codeu.chat.client.core.ConversationContext;
 import codeu.chat.client.core.MessageContext;
 import codeu.chat.client.core.UserContext;
 import codeu.chat.common.*;
-import codeu.chat.util.Time;
 import codeu.chat.util.Tokenizer;
 import codeu.chat.util.Uuid;
 
 public final class Chat {
 
-  private static final File logFile = new File("data/transaction_log.txt");
+  private static File logFile;
   private static PrintWriter pw_log;
 
   //used to access Chat's users from the user panel for interest system feature
   private Context rootPanelContext;
-  private Time lastUpdate;
-  private ArrayDeque<String> updates = new ArrayDeque<>();
+
   //used to access Chat's conversations from outside the user panel
   private UserContext userPanelContext;
 
@@ -54,30 +52,34 @@ public final class Chat {
   // panel all it needs to do is pop the top panel.
   private final Stack<Panel> panels = new Stack<>();
 
-  public Chat(Context context) {
+  public Chat(Context context){
 
     this.panels.push(createRootPanel(context));
+    logFile = new File("data/transaction_log.txt");
 
     try {
       // Create a new transaction_log.txt file if needed - if not, this command does nothing
-      if(!logFile.createNewFile())
-        System.out.println("Successfully restored last logged server state.");
+      logFile.createNewFile();
 
       // Open the file as a PrintWriter and set file writing options to append
-      pw_log = new PrintWriter(new BufferedWriter(new FileWriter("data/transaction_log.txt", true)));
+      pw_log = new PrintWriter(new BufferedWriter(new FileWriter(logFile, true)));
     }
     catch (Exception ex){
       System.out.println("Unable to load transaction log.");
     }
   }
 
+  public Chat(Context context, StringWriter stringWriter) {
+    this.panels.push(createRootPanel(context));
+    pw_log = new PrintWriter(stringWriter);
+  }
+
   // Transfers all data in the Queue to write to the log
-  private void transferQueueToLog(){
+  public void transferQueueToLog(){
     while(!transactionLog.isEmpty()){
       pw_log.println(transactionLog.pop());
-      pw_log.flush();
     }
-
+    pw_log.flush();
   }
 
   // HANDLE COMMAND
@@ -120,9 +122,6 @@ public final class Chat {
 
     if (panels.peek().handleCommand(command, args)) {
       // the command was handled
-
-      // Flush out buffer to ensure that every command gets written to file immediately
-      pw_log.flush();
       return true;
     }
 
@@ -195,14 +194,13 @@ public final class Chat {
     panel.register("u-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         final UserContext user = context.create(name);
 
         if (name.length() > 0) {
           if (user == null) {
             System.out.println("ERROR: Failed to create new user");
           } else {
-
             //command user-id username creation-time
             transactionLog.add(String.format("ADD-USER %s \"%s\" %s",
                     user.user.id,
@@ -226,7 +224,7 @@ public final class Chat {
     panel.register("u-sign-in", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final UserContext user = findUser(name);
           if (user == null) {
@@ -251,6 +249,7 @@ public final class Chat {
         } else {
           // Print the server info to the user in a pretty way
           System.out.println("Server version: " + info.version.toString());
+          System.out.println("Server uptime: " + info.startTime.toString());
         }
       }
     });
@@ -280,10 +279,14 @@ public final class Chat {
         System.out.println("    Add a new conversation with the given title and join it as the current user.");
         System.out.println("  c-join <title>");
         System.out.println("    Join the conversation as the current user.");
+        System.out.println("  c-interest-list");
+        System.out.println("    List all conversations that the current user follows.");
         System.out.println("  c-interest-add <title>");
         System.out.println("    Adds the specified conversation to user's interests.");
         System.out.println("  c-interest-remove <title>");
         System.out.println("    Removes the specified conversation from the user's interests.");
+        System.out.println("  u-interest-list");
+        System.out.println("    List all users that the current user follows.");
         System.out.println("  u-interest-add <username>");
         System.out.println("    Adds the specified user to user's interests.");
         System.out.println("  u-interest-remove <username>");
@@ -324,7 +327,7 @@ public final class Chat {
     panel.register("c-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = user.start(name);
           if (conversation == null) {
@@ -354,7 +357,7 @@ public final class Chat {
     panel.register("c-join", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String name = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
           final ConversationContext conversation = find(name);
           if (conversation == null) {
@@ -376,6 +379,24 @@ public final class Chat {
           }
         }
         return null;
+      }
+    });
+
+    // C-INTEREST-LIST (list conversations)
+    //
+    // Add a command that will print all conversations the user is interested in when the user enters
+    // "c-interest-list" while on the user panel.
+    //
+    panel.register("c-interest-list", new Panel.Command() {
+      @Override
+      public void invoke(List<String> args) {
+        for (final Uuid convoID : user.user.convoInterests) {
+          final ConversationContext conversation = findConversation(convoID);
+          System.out.format(
+                  "CONVERSATION %s (UUID: %s)\n",
+                  conversation.conversation.title,
+                  conversation.conversation.id);
+        }
       }
     });
 
@@ -433,6 +454,24 @@ public final class Chat {
           }
         } else {
           System.out.println("ERROR: Missing <title>");
+        }
+      }
+    });
+
+    // U-INTEREST-LIST (list conversations)
+    //
+    // Add a command that will print all users the current user is interested in when the user enters
+    // "u-interest-list" while on the user panel.
+    //
+    panel.register("u-interest-list", new Panel.Command() {
+      @Override
+      public void invoke(List<String> args) {
+        for (final Uuid userID : user.user.userInterests) {
+          final UserContext user = findUser(userID);
+          System.out.format(
+                  "USER %s (UUID: %s)\n",
+                  user.user.name,
+                  user.user.id);
         }
       }
     });
@@ -497,20 +536,40 @@ public final class Chat {
     panel.register("status-update", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        System.out.println("Followed Users:");
+        // Only print the followed users 'header' if the user follows at least one person
+        if(user.user.userInterests.size() > 0)
+          System.out.println("======= Followed Users: =======");
+
         //every user Uuid in interests Set should be printed with all their info
         for (Uuid userID : user.user.userInterests){
           UserContext followedUser = findUser(userID);
-          //System.out.pr
-          //outprint what convos they've contributed to and what convo's they've created
+          System.out.format("Name: %s\n", followedUser.user.name);
+
+          if(followedUser.newConversations.size() > 0)
+            System.out.format("\t%s has added and updated these conversations:\n", followedUser.user.name);
+          for(Uuid newConvoID : followedUser.newConversations){
+            ConversationContext newConvo = findConversation(newConvoID);
+            System.out.format("\t\tCreated: %s\n", newConvo.conversation.title);
+
+            // Remove the 'new' conversation to refresh for next status update
+            followedUser.newConversations.remove(newConvoID);
+          }
+
+          for(ConversationContext updatedConvoID : user.conversations()){
+            if(updatedConvoID.conversation.messageCounter > 0)
+              System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
+          }
         }
 
-        System.out.println("Followed Conversations:\n");
+        if(user.user.convoInterests.size() > 0)
+          System.out.println("\n======= Followed Conversations: =======");
+
         //every followed conversation's name and messages added since last update is printed
         for (Uuid convoID : user.user.convoInterests){
           ConversationContext followedConvo = findConversation(convoID);
           System.out.format("Name: %s\n", followedConvo.conversation.title);
-          System.out.format("Messages added since last status upadate: %s\n", followedConvo.conversation.messageCounter);
+          System.out.format("\tMessages added to %s since last status update: %s\n", followedConvo.conversation.title, followedConvo.conversation.messageCounter);
+
           //resetting message counter since it counts messages since last status update
           followedConvo.conversation.messageCounter = 0;
         }
@@ -594,7 +653,7 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        final String message = args.size() > 0 ? String.join(" ", args.subList(0, args.size())) : "";
+        final String message = args.size() > 0 ? String.join(" ", args) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
           //if this conversation is in the user's interests, add to the messages contributed counter

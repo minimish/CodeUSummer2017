@@ -16,6 +16,8 @@ package codeu.chat.client.core;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import codeu.chat.common.BasicController;
 import codeu.chat.common.BasicView;
@@ -29,17 +31,24 @@ public final class UserContext {
   private final BasicView view;
   private final BasicController controller;
 
+  // Keep track of new conversations
+  public Set<Uuid> newConversations;
+
   public UserContext(User user, BasicView view, BasicController controller) {
     this.user = user;
     this.view = view;
     this.controller = controller;
+    this.newConversations = new HashSet<>();
   }
 
   public ConversationContext start(String name) {
     final ConversationHeader conversation = controller.newConversation(name, user.id);
-    return conversation == null ?
-        null :
-        new ConversationContext(user, conversation, view, controller);
+
+    if(conversation != null){
+      newConversations.add(conversation.id);
+      return new ConversationContext(user, conversation, view, controller);
+    }
+    return null;
   }
 
   public Iterable<ConversationContext> conversations() {
