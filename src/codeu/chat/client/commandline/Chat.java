@@ -412,7 +412,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //add specified conversation to user's interests
-            user.user.interests.add(conversation.conversation.id);
+            user.user.convoInterests.add(conversation.conversation.id);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -446,7 +446,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //if conversation is in interests it's removed, if not nothing is done
-            user.user.interests.remove(conversation.conversation.id);
+            user.user.convoInterests.remove(conversation.conversation.id);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -480,7 +480,7 @@ public final class Chat {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //adding specified user's Uuid to current user's interests
-            user.user.interests.add(interestUser.user.id);
+            user.user.userInterests.add(interestUser.user.id);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -514,7 +514,7 @@ public final class Chat {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
             //removing specified user from current user's interests
-            user.user.interests.remove(interestUser.user.id);
+            user.user.userInterests.remove(interestUser.user.id);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
