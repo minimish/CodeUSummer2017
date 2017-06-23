@@ -36,6 +36,9 @@ public final class Chat {
   //used to access Chat's conversations from outside the user panel
   private UserContext userPanelContext;
 
+  private HashMap<Uuid, Set<Uuid>> userInterestMap = new HashMap<>();
+  private HashMap<Uuid, Set<Uuid>> convoInterestMap = new HashMap<>();
+
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
    * to keep track of commands for the transaction log and chat
@@ -390,12 +393,14 @@ public final class Chat {
     panel.register("c-interest-list", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        for (final Uuid convoID : user.user.convoInterests) {
+        if(convoInterestMap.get(user.user.id) != null){
+        for (final Uuid convoID : convoInterestMap.get(user.user.id)) {
           final ConversationContext conversation = findConversation(convoID);
           System.out.format(
                   "CONVERSATION %s (UUID: %s)\n",
                   conversation.conversation.title,
                   conversation.conversation.id);
+          }
         }
       }
     });
@@ -416,6 +421,24 @@ public final class Chat {
           } else {
             //add specified conversation to user's interests
             user.user.convoInterests.add(conversation.conversation.id);
+
+            // Grab this user's interested conversations from the HashMap
+            Set<Uuid> interestedConvos;
+
+            // If the user already has a Set mapped to their Uuid for interested convos, grab it. Else, make a new one
+            if(convoInterestMap.containsKey(user.user.id))
+              interestedConvos = convoInterestMap.get(user.user.id);
+            else
+              interestedConvos = new HashSet<>();
+
+            // Add the conversation to the HashMap
+            interestedConvos.add(conversation.conversation.id);
+            convoInterestMap.put(user.user.id, interestedConvos);
+
+            transactionLog.add(String.format("ADD-INTEREST-CONVERSATION %s %s",
+                    user.user.id,
+                    conversation.conversation.id
+            ));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -451,6 +474,15 @@ public final class Chat {
           } else {
             //if conversation is in interests it's removed, if not nothing is done
             user.user.convoInterests.remove(conversation.conversation.id);
+
+            // Only remove the interested convo if the user has a value mapped to them
+            if(convoInterestMap.containsKey(user.user.id))
+              convoInterestMap.get(user.user.id).remove(conversation.conversation.id);
+
+            transactionLog.add(String.format("REMOVE-INTEREST-CONVERSATION %s %s",
+                    user.user.id,
+                    conversation.conversation.id
+            ));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -492,6 +524,24 @@ public final class Chat {
           } else {
             //adding specified user's Uuid to current user's interests
             user.user.userInterests.add(interestUser.user.id);
+
+            // Grab this user's interested users from the HashMap
+            Set<Uuid> interestedUsers;
+
+            // If the user already has a Set mapped to their Uuid for interested users, grab it. Else, make a new one
+            if(userInterestMap.containsKey(user.user.id))
+              interestedUsers = userInterestMap.get(user.user.id);
+            else
+              interestedUsers = new HashSet<>();
+
+            // Add the conversation to the HashMap
+            interestedUsers.add(interestUser.user.id);
+            userInterestMap.put(user.user.id, interestedUsers);
+
+            transactionLog.add(String.format("ADD-INTEREST-USER %s %s",
+                    user.user.id,
+                    interestUser.user.id
+            ));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -515,6 +565,15 @@ public final class Chat {
           } else {
             //removing specified user from current user's interests
             user.user.userInterests.remove(interestUser.user.id);
+
+            // Only remove the followed user if this user has a Set value mapped to them
+            if(userInterestMap.containsKey(user.user.id))
+              userInterestMap.get(user.user.id).remove(interestUser.user.id);
+
+            transactionLog.add(String.format("REMOVE-INTEREST-USER %s %s",
+                    user.user.id,
+                    interestUser.user.id
+            ));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -536,42 +595,48 @@ public final class Chat {
     panel.register("status-update", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        // Only print the followed users 'header' if the user follows at least one person
-        if(user.user.userInterests.size() > 0)
+
+        if (userInterestMap.get(user.user.id) != null) {
           System.out.println("======= Followed Users: =======");
+          //every user Uuid in interests Set should be printed with all their info
+          for (Uuid userID : userInterestMap.get(user.user.id)) {
+            // Find the followed user and print their name
+            UserContext followedUser = findUser(userID);
+            System.out.format("Name: %s\n", followedUser.user.name);
 
-        //every user Uuid in interests Set should be printed with all their info
-        for (Uuid userID : user.user.userInterests){
-          UserContext followedUser = findUser(userID);
-          System.out.format("Name: %s\n", followedUser.user.name);
+            // If the followed user has created new conversations, print out the 'header'
+            if (followedUser.newConversations.size() > 0)
+              System.out.format("\t%s has added and updated these conversations:\n", followedUser.user.name);
 
-          if(followedUser.newConversations.size() > 0)
-            System.out.format("\t%s has added and updated these conversations:\n", followedUser.user.name);
-          for(Uuid newConvoID : followedUser.newConversations){
-            ConversationContext newConvo = findConversation(newConvoID);
-            System.out.format("\t\tCreated: %s\n", newConvo.conversation.title);
+            // Iterate through the followed user's new conversations and print out the conversation title
+            for (Uuid newConvoID : followedUser.newConversations) {
+              ConversationContext newConvo = findConversation(newConvoID);
+              System.out.format("\t\tCreated: %s\n", newConvo.conversation.title);
 
-            // Remove the 'new' conversation to refresh for next status update
-            followedUser.newConversations.remove(newConvoID);
-          }
+              // Remove the 'new' conversation to refresh for next status update
+              followedUser.newConversations.remove(newConvoID);
+            }
 
-          for(ConversationContext updatedConvoID : user.conversations()){
-            if(updatedConvoID.conversation.messageCounter > 0)
-              System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
+            // Iterate through the followed user's conversations and check if they have updated any conversations
+            for (ConversationContext updatedConvoID : followedUser.conversations()) {
+              // If the followed user's conversation has new messages, it has been updated
+              if (updatedConvoID.conversation.messageCounter > 0)
+                System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
+            }
           }
         }
 
-        if(user.user.convoInterests.size() > 0)
+        if(convoInterestMap.get(user.user.id) != null){
           System.out.println("\n======= Followed Conversations: =======");
+          //every followed conversation's name and messages added since last update is printed
+          for (Uuid convoID : convoInterestMap.get(user.user.id)) {
+            ConversationContext followedConvo = findConversation(convoID);
+            System.out.format("Name: %s\n", followedConvo.conversation.title);
+            System.out.format("\tMessages added to %s since last status update: %s\n", followedConvo.conversation.title, followedConvo.conversation.messageCounter);
 
-        //every followed conversation's name and messages added since last update is printed
-        for (Uuid convoID : user.user.convoInterests){
-          ConversationContext followedConvo = findConversation(convoID);
-          System.out.format("Name: %s\n", followedConvo.conversation.title);
-          System.out.format("\tMessages added to %s since last status update: %s\n", followedConvo.conversation.title, followedConvo.conversation.messageCounter);
-
-          //resetting message counter since it counts messages since last status update
-          followedConvo.conversation.messageCounter = 0;
+            //resetting message counter since it counts messages since last status update
+            followedConvo.conversation.messageCounter = 0;
+          }
         }
       }
     });
