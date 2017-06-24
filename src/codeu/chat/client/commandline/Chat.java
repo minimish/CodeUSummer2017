@@ -39,6 +39,9 @@ public final class Chat {
   private HashMap<Uuid, Set<Uuid>> userInterestMap = new HashMap<>();
   private HashMap<Uuid, Set<Uuid>> convoInterestMap = new HashMap<>();
 
+  //Map to enable each user's message counts for followed conversations to be independent
+  private HashMap<Uuid, HashMap<Uuid, Integer>> convoMessageCountsMap = new HashMap<>();
+
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
    * to keep track of commands for the transaction log and chat
@@ -419,21 +422,37 @@ public final class Chat {
           if (conversation == null) {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
-            //add specified conversation to user's interests
-            user.user.convoInterests.add(conversation.conversation.id);
-
             // Grab this user's interested conversations from the HashMap
             Set<Uuid> interestedConvos;
+            //Keep track of the message count for this user for this convo
+            HashMap<Uuid, Integer> convoMessageCount;
 
             // If the user already has a Set mapped to their Uuid for interested convos, grab it. Else, make a new one
-            if(convoInterestMap.containsKey(user.user.id))
+            if(convoInterestMap.containsKey(user.user.id)) {
               interestedConvos = convoInterestMap.get(user.user.id);
-            else
+              convoMessageCount = convoMessageCountsMap.get(user.user.id);
+            }
+            else {
               interestedConvos = new HashSet<>();
+              convoMessageCount = new HashMap<Uuid, Integer>();
+            }
 
             // Add the conversation to the HashMap
             interestedConvos.add(conversation.conversation.id);
             convoInterestMap.put(user.user.id, interestedConvos);
+            System.out.format("%s added to interests", conversation.conversation.title);
+
+            //Keeping track of message count for convo
+            //if map of counts didn't have convoID as key, then create a mapping
+            if (!convoMessageCount.containsKey(conversation.conversation.id)){
+              convoMessageCount.put(conversation.conversation.id, conversation.conversation.messageCounter);
+              //map convo and count to user
+              convoMessageCountsMap.put(user.user.id, convoMessageCount);
+            }
+            else {  //if it's in interests already, don't create another mapping
+              System.out.println("ERROR: Conversation is already in interests!");
+              return;
+            }
 
             transactionLog.add(String.format("ADD-INTEREST-CONVERSATION %s %s",
                     user.user.id,
@@ -472,12 +491,16 @@ public final class Chat {
           if (conversation == null) {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
-            //if conversation is in interests it's removed, if not nothing is done
-            user.user.convoInterests.remove(conversation.conversation.id);
-
             // Only remove the interested convo if the user has a value mapped to them
-            if(convoInterestMap.containsKey(user.user.id))
+            if(convoInterestMap.containsKey(user.user.id)) {
               convoInterestMap.get(user.user.id).remove(conversation.conversation.id);
+              //stops keeping track of message count
+              convoMessageCountsMap.get(user.user.id).remove(conversation.conversation.id);
+            }
+            else {
+              System.out.println("ERROR: Conversation was not in interests!");
+              return;
+            }
 
             transactionLog.add(String.format("REMOVE-INTEREST-CONVERSATION %s %s",
                     user.user.id,
@@ -498,7 +521,7 @@ public final class Chat {
     panel.register("u-interest-list", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        for (final Uuid userID : user.user.userInterests) {
+        for (final Uuid userID : userInterestMap.get(user.user.id)) {
           final UserContext user = findUser(userID);
           System.out.format(
                   "USER %s (UUID: %s)\n",
@@ -522,9 +545,6 @@ public final class Chat {
           if (user == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
-            //adding specified user's Uuid to current user's interests
-            user.user.userInterests.add(interestUser.user.id);
-
             // Grab this user's interested users from the HashMap
             Set<Uuid> interestedUsers;
 
@@ -563,9 +583,6 @@ public final class Chat {
           if (user == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
-            //removing specified user from current user's interests
-            user.user.userInterests.remove(interestUser.user.id);
-
             // Only remove the followed user if this user has a Set value mapped to them
             if(userInterestMap.containsKey(user.user.id))
               userInterestMap.get(user.user.id).remove(interestUser.user.id);
@@ -581,7 +598,6 @@ public final class Chat {
       }
     });
 
-    //TODO status update command
     // STATUS UPDATE
     //
     // Command that prints info about the user's interests when
@@ -620,6 +636,8 @@ public final class Chat {
             // Iterate through the followed user's conversations and check if they have updated any conversations
             for (ConversationContext updatedConvoID : followedUser.conversations()) {
               // If the followed user's conversation has new messages, it has been updated
+              //TODO issue: message counter is in ConversationHeader which doesn't reload (added to every time "m-add" is called)
+              //TODO message counters in Chat class (which reload) are only for conversations in interests
               if (updatedConvoID.conversation.messageCounter > 0)
                 System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
             }
@@ -632,10 +650,11 @@ public final class Chat {
           for (Uuid convoID : convoInterestMap.get(user.user.id)) {
             ConversationContext followedConvo = findConversation(convoID);
             System.out.format("Name: %s\n", followedConvo.conversation.title);
-            System.out.format("\tMessages added to %s since last status update: %s\n", followedConvo.conversation.title, followedConvo.conversation.messageCounter);
+            System.out.format("\tMessages added to %s since last status update: %s\n", followedConvo.conversation.title,
+                              getMessageCount(user.user.id, followedConvo.conversation.id));
 
-            //resetting message counter since it counts messages since last status update
-            followedConvo.conversation.messageCounter = 0;
+            //resetting message counter in map since it counts messages since last status update
+            convoMessageCountsMap.get(user.user.id).put(followedConvo.conversation.id, 0);
           }
         }
       }
@@ -721,10 +740,15 @@ public final class Chat {
         final String message = args.size() > 0 ? String.join(" ", args) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
-          //if this conversation is in the user's interests, add to the messages contributed counter
-          if (userPanelContext.user.convoInterests.contains(conversation.conversation.id)){
-            conversation.conversation.messageCounter++;
+
+          //if this conversation is in the user's interests, add to the messages contributed counter in map
+          if (convoInterestMap.containsKey(userPanelContext.user.id)&&
+              convoMessageCountsMap.get(userPanelContext.user.id).containsKey(conversation.conversation.id)){
+            incrementMessageCount(userPanelContext.user.id, conversation.conversation.id);
           }
+          //message counter variable is incremented regardless of following, due to user status update
+          conversation.conversation.messageCounter ++;
+
           transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
                   messageContext.message.id,
                   messageContext.message.author,
@@ -756,6 +780,19 @@ public final class Chat {
     // Now that the panel has all its commands registered, return the panel
     // so that it can be used.
     return panel;
+  }
+
+  //Increments the message count of a specified conversation of interest
+  // of a specific user.
+  private void incrementMessageCount(Uuid userID, Uuid convoID){
+    Integer incrementedCount = convoMessageCountsMap.get(userID).get(convoID) + 1;
+    convoMessageCountsMap.get(userID).put(convoID, incrementedCount);
+  }
+
+  //Getter method for conversation message counts in conversations of interest.
+  private Integer getMessageCount(Uuid userID, Uuid convoID){
+    System.out.println(convoMessageCountsMap.get(userID).get(convoID));
+    return convoMessageCountsMap.get(userID).get(convoID);
   }
 
   //methods below are helper methods to get a user or conversation from name or Uuid

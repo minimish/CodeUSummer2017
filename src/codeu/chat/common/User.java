@@ -56,12 +56,6 @@ public final class User {
   public final String name;
   public final Time creation;
 
-  //set holding UuIDs of conversations that this user follows
-  public Set<Uuid> convoInterests = new HashSet<Uuid>();
-
-  //set holding UuIDs of users that this user follows
-  public Set<Uuid> userInterests = new HashSet<Uuid>();
-
   public User(Uuid id, String name, Time creation) {
 
     this.id = id;
