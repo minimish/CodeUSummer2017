@@ -42,6 +42,9 @@ public final class Chat {
   //Map to enable each user's message counts for followed conversations to be independent
   private HashMap<Uuid, HashMap<Uuid, Integer>> convoMessageCountsMap = new HashMap<>();
 
+  //Map holding each user's updated conversations for status update
+  private HashMap<Uuid, Set<Uuid>> updatedConversationsMap = new HashMap<>();
+
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
    * to keep track of commands for the transaction log and chat
@@ -440,12 +443,11 @@ public final class Chat {
             // Add the conversation to the HashMap
             interestedConvos.add(conversation.conversation.id);
             convoInterestMap.put(user.user.id, interestedConvos);
-            System.out.format("%s added to interests", conversation.conversation.title);
 
             //Keeping track of message count for convo
             //if map of counts didn't have convoID as key, then create a mapping
             if (!convoMessageCount.containsKey(conversation.conversation.id)){
-              convoMessageCount.put(conversation.conversation.id, conversation.conversation.messageCounter);
+              convoMessageCount.put(conversation.conversation.id, 0);
               //map convo and count to user
               convoMessageCountsMap.put(user.user.id, convoMessageCount);
             }
@@ -635,10 +637,8 @@ public final class Chat {
 
             // Iterate through the followed user's conversations and check if they have updated any conversations
             for (ConversationContext updatedConvoID : followedUser.conversations()) {
-              // If the followed user's conversation has new messages, it has been updated
-              //TODO issue: message counter is in ConversationHeader which doesn't reload (added to every time "m-add" is called)
-              //TODO message counters in Chat class (which reload) are only for conversations in interests
-              if (updatedConvoID.conversation.messageCounter > 0)
+              // If the followed user's updated conversations map has the convo print out info
+              if (updatedConversationsMap.get(userID).contains(updatedConvoID))
                 System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
             }
           }
@@ -741,13 +741,22 @@ public final class Chat {
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
 
+          //if this user isn't in the updated conversations map, add them with a new Set
+          Set<Uuid> updatedConversations = new HashSet<>();
+          if (!updatedConversationsMap.containsKey(userPanelContext.user.id)){
+            updatedConversations = new HashSet<>();
+          }
+          else { //if user already has Set of updated convos get it
+            updatedConversations = updatedConversationsMap.get(userPanelContext.user.id);
+          }
+          updatedConversations.add(conversation.conversation.id);
+          updatedConversationsMap.put(userPanelContext.user.id, updatedConversations);
+
           //if this conversation is in the user's interests, add to the messages contributed counter in map
           if (convoInterestMap.containsKey(userPanelContext.user.id)&&
               convoMessageCountsMap.get(userPanelContext.user.id).containsKey(conversation.conversation.id)){
             incrementMessageCount(userPanelContext.user.id, conversation.conversation.id);
           }
-          //message counter variable is incremented regardless of following, due to user status update
-          conversation.conversation.messageCounter ++;
 
           transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
                   messageContext.message.id,

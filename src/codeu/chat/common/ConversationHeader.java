@@ -54,7 +54,6 @@ public final class ConversationHeader {
   public final Uuid owner;
   public final Time creation;
   public final String title;
-  public int messageCounter;
 
   public ConversationHeader(Uuid id, Uuid owner, Time creation, String title) {
 
