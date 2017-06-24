@@ -32,12 +32,11 @@ public final class Chat {
 
   //used to access Chat's users from the user panel for interest system feature
   private Context rootPanelContext;
-
   //used to access Chat's conversations from outside the user panel
   private UserContext userPanelContext;
 
-  private HashMap<Uuid, Set<Uuid>> userInterestMap = new HashMap<>();
-  private HashMap<Uuid, Set<Uuid>> convoInterestMap = new HashMap<>();
+  public HashMap<Uuid, Set<Uuid>> userInterestMap = new HashMap<>();
+  public HashMap<Uuid, Set<Uuid>> convoInterestMap = new HashMap<>();
 
   /**
    * ArrayDeque is a double-ended, self-resizing queue, used
@@ -338,6 +337,13 @@ public final class Chat {
           } else {
             panels.push(createConversationPanel(conversation));
 
+            // Grab the users this user is interested in
+            Set<Uuid> interestedUsers = userInterestMap.get(user.user.id);
+            if(interestedUsers != null){
+              user.newConversations.add(conversation.conversation.id);
+              userInterestMap.put(user.user.id, interestedUsers);
+            }
+
             //command convo-id (uuid of)convo-owner convo-title creation-time
             transactionLog.add(String.format("ADD-CONVERSATION %s %s \"%s\" %s",
                     conversation.conversation.id,
@@ -394,15 +400,16 @@ public final class Chat {
       @Override
       public void invoke(List<String> args) {
         if(convoInterestMap.get(user.user.id) != null){
-        for (final Uuid convoID : convoInterestMap.get(user.user.id)) {
-          final ConversationContext conversation = findConversation(convoID);
-          System.out.format(
-                  "CONVERSATION %s (UUID: %s)\n",
-                  conversation.conversation.title,
-                  conversation.conversation.id);
+          for (final Uuid convoID : convoInterestMap.get(user.user.id)) {
+            final ConversationContext conversation = findConversation(convoID);
+            System.out.format(
+                    "CONVERSATION %s (UUID: %s)\n",
+                    conversation.conversation.title,
+                    conversation.conversation.id);
           }
         }
       }
+
     });
 
     //C-INTEREST ADD (adds conversation to user's interests)
@@ -420,7 +427,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //add specified conversation to user's interests
-            user.user.convoInterests.add(conversation.conversation.id);
+//            user.user.convoInterests.add(conversation.conversation.id);
 
             // Grab this user's interested conversations from the HashMap
             Set<Uuid> interestedConvos;
@@ -473,7 +480,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             //if conversation is in interests it's removed, if not nothing is done
-            user.user.convoInterests.remove(conversation.conversation.id);
+//            user.user.convoInterests.remove(conversation.conversation.id);
 
             // Only remove the interested convo if the user has a value mapped to them
             if(convoInterestMap.containsKey(user.user.id))
@@ -498,12 +505,15 @@ public final class Chat {
     panel.register("u-interest-list", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        for (final Uuid userID : user.user.userInterests) {
-          final UserContext user = findUser(userID);
-          System.out.format(
-                  "USER %s (UUID: %s)\n",
-                  user.user.name,
-                  user.user.id);
+        if(userInterestMap.get(user.user.id) != null){
+          for (final Uuid userID : userInterestMap.get(user.user.id)) {
+            final UserContext user = findUser(userID);
+            System.out.format(
+                    "USER %s (UUID: %s)\n",
+                    user.user.name,
+                    user.user.id
+            );
+          }
         }
       }
     });
@@ -596,19 +606,18 @@ public final class Chat {
       @Override
       public void invoke(List<String> args) {
 
-        if (userInterestMap.get(user.user.id) != null) {
+        Set<Uuid> followedUserConvos = userInterestMap.get(user.user.id);
+
+        if (followedUserConvos != null) {
           System.out.println("======= Followed Users: =======");
           //every user Uuid in interests Set should be printed with all their info
-          for (Uuid userID : userInterestMap.get(user.user.id)) {
+          for (Uuid userID : followedUserConvos) {
             // Find the followed user and print their name
             UserContext followedUser = findUser(userID);
             System.out.format("Name: %s\n", followedUser.user.name);
+            System.out.format("\t%s has added and updated these conversations:\n", followedUser.user.name);
 
-            // If the followed user has created new conversations, print out the 'header'
-            if (followedUser.newConversations.size() > 0)
-              System.out.format("\t%s has added and updated these conversations:\n", followedUser.user.name);
-
-            // Iterate through the followed user's new conversations and print out the conversation title
+            // Iterate through the followed user's conversations and print out the conversation title
             for (Uuid newConvoID : followedUser.newConversations) {
               ConversationContext newConvo = findConversation(newConvoID);
               System.out.format("\t\tCreated: %s\n", newConvo.conversation.title);
@@ -721,10 +730,21 @@ public final class Chat {
         final String message = args.size() > 0 ? String.join(" ", args) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
-          //if this conversation is in the user's interests, add to the messages contributed counter
-          if (userPanelContext.user.convoInterests.contains(conversation.conversation.id)){
-            conversation.conversation.messageCounter++;
+//          //if this conversation is in the user's interests, add to the messages contributed counter
+//          if (userPanelContext.user.convoInterests.contains(conversation.conversation.id)){
+//            conversation.conversation.messageCounter++;
+//          }
+
+          Set<Uuid> userInterestedConvos = convoInterestMap.get(userPanelContext.user.id);
+          if(userInterestedConvos != null){
+            if(userInterestedConvos.contains(conversation.conversation.id)){
+              userInterestedConvos.remove(conversation.conversation.id);
+              System.out.println(++conversation.conversation.messageCounter);
+              userInterestedConvos.add(conversation.conversation.id);
+              convoInterestMap.put(userPanelContext.user.id, userInterestedConvos);
+            }
           }
+
           transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
                   messageContext.message.id,
                   messageContext.message.author,
