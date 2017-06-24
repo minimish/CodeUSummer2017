@@ -239,6 +239,8 @@ public final class Chat {
           if (user == null) {
             System.out.format("ERROR: Failed to sign in as '%s'\n", name);
           } else {
+              Set<Uuid> updatedConversations = new HashSet<>();
+            updatedConversationsMap.put(user.user.id, updatedConversations);
             panels.push(createUserPanel(user));
           }
         } else {
@@ -638,8 +640,8 @@ public final class Chat {
             // Iterate through the followed user's conversations and check if they have updated any conversations
             for (ConversationContext updatedConvoID : followedUser.conversations()) {
               // If the followed user's updated conversations map has the convo print out info
-              if (updatedConversationsMap.get(userID).contains(updatedConvoID))
-                System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
+              if (updatedConversationsMap.containsKey(userID) && updatedConversationsMap.get(userID).contains(updatedConvoID))
+                  System.out.format("\t\tUpdated: %s\n", updatedConvoID.conversation.title);
             }
           }
         }
@@ -742,7 +744,7 @@ public final class Chat {
           MessageContext messageContext = conversation.add(message);
 
           //if this user isn't in the updated conversations map, add them with a new Set
-          Set<Uuid> updatedConversations = new HashSet<>();
+          Set<Uuid> updatedConversations;
           if (!updatedConversationsMap.containsKey(userPanelContext.user.id)){
             updatedConversations = new HashSet<>();
           }
