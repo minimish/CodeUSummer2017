@@ -78,6 +78,8 @@ final class ClientMain {
 
     LOG.info("Successfully restored last logged interest system state.");
 
+    System.out.println("Successfully loaded interest system!");
+
     fileReader.close();
     bufferedReader.close();
   }

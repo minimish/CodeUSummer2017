@@ -628,12 +628,8 @@ public final class Chat {
             System.out.format("Name: %s (UUID: %s)\n", followedConversation.conversation.title, followedConversation.conversation.id);
 
             // Get the message count contributed by ALL users
-            Integer totalMessageCount = 0;
-            for(UserContext users : rootPanelContext.allUsers())
-              totalMessageCount += (getMessageCount(users.user.id, followedConversationID) == null) ? 0 : getMessageCount(users.user.id, followedConversationID);
-
-            if(convoMessageCountsMap.get(user.user.id) != null)
-              System.out.format("\tMessages added since last update: %d\n", totalMessageCount);
+            Integer totalMessageCount = (getMessageCount(user.user.id, followedConversationID) == null) ? 0 : getMessageCount(user.user.id, followedConversationID);
+            System.out.format("\tMessages added since last update: %d\n", totalMessageCount);
 
           }
         }
