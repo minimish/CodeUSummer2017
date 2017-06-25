@@ -417,7 +417,8 @@ public final class Chat {
             System.out.format(
                     "CONVERSATION %s (UUID: %s)\n",
                     conversation.conversation.title,
-                    conversation.conversation.id);
+                    conversation.conversation.id
+            );
           }
         }
       }
@@ -439,6 +440,11 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
               addConvoInterest(user.user.id, conversation.conversation.id);
+
+              transactionLog.add(String.format("ADD-INTEREST-CONVERSATION %s %s",
+                      user.user.id,
+                      conversation.conversation.id
+              ));
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -472,19 +478,7 @@ public final class Chat {
           if (conversation == null) {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
-            UserContext u = findUser(user.user.id);
-            u.user.convoInterests.remove(conversation.conversation.id);
-
-            // Only remove the interested convo if the user has a value mapped to them
-            if(convoInterestMap.containsKey(user.user.id)) {
-              convoInterestMap.get(user.user.id).remove(conversation.conversation.id);
-              //stops keeping track of message count
-              convoMessageCountsMap.get(user.user.id).remove(conversation.conversation.id);
-            }
-            else {
-              System.out.println("ERROR: Conversation was not in interests!");
-              return;
-            }
+            removeConvoInterest(user.user.id, conversation.conversation.id);
 
             transactionLog.add(String.format("REMOVE-INTEREST-CONVERSATION %s %s",
                     user.user.id,
@@ -533,6 +527,11 @@ public final class Chat {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
               addUserInterest(user.user.id, interestUser.user.id);
+
+              transactionLog.add(String.format("ADD-INTEREST-USER %s %s",
+                      user.user.id,
+                      interestUser.user.id
+              ));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -554,9 +553,7 @@ public final class Chat {
           if (interestUser == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
-            // Only remove the followed user if this user has a Set value mapped to them
-            if(userInterestMap.containsKey(user.user.id))
-              userInterestMap.get(user.user.id).remove(interestUser.user.id);
+            removeUserInterest(user.user.id, interestUser.user.id);
 
             transactionLog.add(String.format("REMOVE-INTEREST-USER %s %s",
                     user.user.id,
@@ -586,7 +583,7 @@ public final class Chat {
         Set<Uuid> followedConversations = convoInterestMap.get(user.user.id);
 
         // If the user follows anyone, print their status
-        if(followedUsers != null){
+        if(followedUsers != null && followedUsers.size() > 0){
           System.out.println("======= Followed Users: =======");
 
           // Iterate through the users and print their new and updated conversations
@@ -619,7 +616,7 @@ public final class Chat {
         }
 
         // If the user follows any conversations, print their status
-        if(followedConversations != null){
+        if(followedConversations != null && followedConversations.size() > 0){
           System.out.println("======= Followed Conversations: =======");
 
           // Iterate through the followed conversations and print their message counts
@@ -630,7 +627,7 @@ public final class Chat {
             // Get the message count contributed by ALL users
             Integer totalMessageCount = 0;
             for(UserContext users : rootPanelContext.allUsers())
-              totalMessageCount += getMessageCount(users.user.id, followedConversationID);
+              totalMessageCount += (getMessageCount(users.user.id, followedConversationID) == null) ? 0 : getMessageCount(users.user.id, followedConversationID);
 
             if(convoMessageCountsMap.get(user.user.id) != null)
               System.out.format("\tMessages added since last update: %d\n", totalMessageCount);
@@ -639,14 +636,16 @@ public final class Chat {
         }
 
         // Reset message count for a fresh new status update
-        for(UserContext u : rootPanelContext.allUsers()){
-          HashMap<Uuid, Integer> userConvoCount = convoMessageCountsMap.get(u.user.id);
-          if(userConvoCount != null){
-            for(ConversationContext c : u.conversations())
-              if(userConvoCount.containsKey(c.conversation.id)){
-                userConvoCount.put(c.conversation.id, 0);
-              }
-            convoMessageCountsMap.put(u.user.id, userConvoCount);
+        if(followedUsers != null){
+          for(Uuid followedUserID : followedUsers){
+            HashMap<Uuid, Integer> userConvoCount = convoMessageCountsMap.get(followedUserID);
+            if(userConvoCount != null){
+              for(ConversationContext c : user.conversations())
+                if(userConvoCount.containsKey(c.conversation.id)){
+                  userConvoCount.put(c.conversation.id, 0);
+                }
+              convoMessageCountsMap.put(user.user.id, userConvoCount);
+            }
           }
         }
 
@@ -838,7 +837,7 @@ public final class Chat {
     return null;
    }
 
-  private void addUserInterest(Uuid userID, Uuid followedUserID){
+  public void addUserInterest(Uuid userID, Uuid followedUserID){
     Set<Uuid> userInterest = userInterestMap.get(userID);
 
     // Check if the user is trying to follow themselves
@@ -869,7 +868,7 @@ public final class Chat {
     }
   }
 
-  private void addConvoInterest(Uuid userID, Uuid followedConvoID){
+  public void addConvoInterest(Uuid userID, Uuid followedConvoID){
     Set<Uuid> convoInterest = convoInterestMap.get(userID);
 
     if(convoInterest == null)
@@ -885,6 +884,24 @@ public final class Chat {
       if(followedConversations == null)
         followedConversations = new HashMap<>();
       followedConversations.put(followedConvoID, 0);
+    }
+  }
+
+  public void removeUserInterest(Uuid userID, Uuid followedUserID){
+    // Only remove the followed user if this user has a Set value mapped to them
+    if(userInterestMap.containsKey(userID))
+      userInterestMap.get(userID).remove(followedUserID);
+  }
+
+  public void removeConvoInterest(Uuid userID, Uuid convoID){
+    // Only remove the interested convo if the user has a value mapped to them
+    if(convoInterestMap.get(userID) != null && convoMessageCountsMap.get(userID) != null) {
+      convoInterestMap.get(userID).remove(convoID);
+      //stops keeping track of message count
+      convoMessageCountsMap.get(userID).remove(convoID);
+    }
+    else {
+      System.out.println("ERROR: Conversation was not in interests!");
     }
   }
 }
