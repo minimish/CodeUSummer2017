@@ -155,5 +155,4 @@ public class View implements BasicView {
     // If we get here it means something went wrong and null should be returned
     return null;
   }
-
 }

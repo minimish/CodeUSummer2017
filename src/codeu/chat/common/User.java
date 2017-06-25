@@ -17,6 +17,7 @@ package codeu.chat.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -45,7 +46,6 @@ public final class User {
           Serializers.STRING.read(in),
           Time.SERIALIZER.read(in)
       );
-
     }
   };
 
@@ -53,11 +53,13 @@ public final class User {
   public final String name;
   public final Time creation;
 
-  //set holding UuIDs of conversations that this user follows
+  // Set holding Uuids of conversations that this user follows
   public Set<Uuid> convoInterests;
 
-  //set holding UuIDs of users that this user follows
+  // Set holding Uuids of users that this user follows
   public Set<Uuid> userInterests;
+
+  public Set<Uuid> newConversations;
 
   public User(Uuid id, String name, Time creation) {
 
@@ -67,5 +69,7 @@ public final class User {
 
     this.convoInterests = new HashSet<>();
     this.userInterests = new HashSet<>();
+
+    this.newConversations = new HashSet<>();
   }
 }

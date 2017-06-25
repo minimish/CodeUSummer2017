@@ -31,21 +31,20 @@ public final class UserContext {
   private final BasicView view;
   private final BasicController controller;
 
-  // Keep track of new conversations
   public Set<Uuid> newConversations;
 
   public UserContext(User user, BasicView view, BasicController controller) {
     this.user = user;
     this.view = view;
     this.controller = controller;
-    this.newConversations = new HashSet<>();
+
+    newConversations = new HashSet<>();
   }
 
   public ConversationContext start(String name) {
     final ConversationHeader conversation = controller.newConversation(name, user.id);
 
     if(conversation != null){
-      newConversations.add(conversation.id);
       return new ConversationContext(user, conversation, view, controller);
     }
     return null;
@@ -62,4 +61,5 @@ public final class UserContext {
 
     return all;
   }
+
 }

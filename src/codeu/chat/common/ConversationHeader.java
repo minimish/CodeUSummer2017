@@ -54,11 +54,14 @@ public final class ConversationHeader {
   public final Time creation;
   public final String title;
 
+  public int messageCounter;
+
   public ConversationHeader(Uuid id, Uuid owner, Time creation, String title) {
 
     this.id = id;
     this.owner = owner;
     this.creation = creation;
     this.title = title;
+    this.messageCounter = 0;
   }
 }

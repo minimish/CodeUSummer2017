@@ -1,10 +1,8 @@
 package codeu.chat.common;
 
-import codeu.chat.server.Server;
 import codeu.chat.util.Logger;
 import codeu.chat.util.Time;
 import codeu.chat.util.Uuid;
-import java.io.IOException;
 
 /**
  * Created by dita on 5/20/17.
