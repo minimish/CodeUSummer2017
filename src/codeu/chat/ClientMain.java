@@ -99,6 +99,7 @@ final class ClientMain {
     final ConnectionSource source = new ClientConnectionSource(address.host, address.port);
 
     LOG.info("Creating client...");
+
     chat = new Chat(new Context(source));
 
     LOG.info("Created client");

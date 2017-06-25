@@ -53,18 +53,9 @@ public final class Model {
 
   private static final Comparator<String> STRING_COMPARE = String.CASE_INSENSITIVE_ORDER;
 
-  private static final Comparator<Collection<Uuid>> COLLECTION_COMPARE = new Comparator<Collection<Uuid>>() {
-    @Override
-    public int compare(Collection<Uuid> o1, Collection<Uuid> o2) {
-      return Integer.compare(o1.size(), o2.size());
-    }
-  };
-
   private final Store<Uuid, User> userById = new Store<>(UUID_COMPARE);
   private final Store<Time, User> userByTime = new Store<>(TIME_COMPARE);
   private final Store<String, User> userByText = new Store<>(STRING_COMPARE);
-
-  private final Store<Collection<Uuid>, User> userByConvoInterest = new Store<>(COLLECTION_COMPARE);
 
   private final Store<Uuid, ConversationHeader> conversationById = new Store<>(UUID_COMPARE);
   private final Store<Time, ConversationHeader> conversationByTime = new Store<>(TIME_COMPARE);
@@ -80,8 +71,6 @@ public final class Model {
     userById.insert(user.id, user);
     userByTime.insert(user.creation, user);
     userByText.insert(user.name, user);
-
-    userByConvoInterest.insert(user.convoInterests, user);
   }
 
   public StoreAccessor<Uuid, User> userById() {
@@ -95,8 +84,6 @@ public final class Model {
   public StoreAccessor<String, User> userByText() {
     return userByText;
   }
-
-  public StoreAccessor<Collection<Uuid>, User> userByConvoInterest() { return userByConvoInterest; }
 
   public void add(ConversationHeader conversation) {
     conversationById.insert(conversation.id, conversation);
