@@ -321,7 +321,7 @@ public final class Chat {
     panel.register("c-list", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        for (final ConversationContext conversation : user.conversations()) {
+        for (final ConversationContext conversation : user.conversations().values()) {
           System.out.format(
               "CONVERSATION %s (UUID: %s)\n",
               conversation.conversation.title,
@@ -387,7 +387,7 @@ public final class Chat {
       // Find the first conversation with the given name and return its context.
       // If no conversation has the given name, this will return null.
       private ConversationContext find(String title) {
-        for (final ConversationContext conversation : user.conversations()) {
+        for (final ConversationContext conversation : user.conversations().values()) {
           if (title.equals(conversation.conversation.title)) {
             return conversation;
           }
@@ -448,7 +448,7 @@ public final class Chat {
       // Find the first conversation with the given name and return its context.
       // If no conversation has the given name, this will return null.
       private ConversationContext findConversation(String title) {
-        for (final ConversationContext conversation : user.conversations()) {
+        for (final ConversationContext conversation : user.conversations().values()) {
           if (title.equals(conversation.conversation.title)) {
             return conversation;
           }
@@ -589,7 +589,7 @@ public final class Chat {
             System.out.format("\t%s has added and updated these conversations:\n", followedUser.user.name);
 
             // Iterate through all the conversations this user has and check if they created/updated any
-            for(ConversationContext followedUserConversation : followedUser.conversations()) {
+            for(ConversationContext followedUserConversation : followedUser.conversations().values()) {
               // If the newConversationsMap has this followed user and this specific conversation, print that they created it
               if (newConversationsMap.get(followedUserID) != null && newConversationsMap.get(followedUserID).contains(followedUserConversation.conversation.id)) {
                 System.out.format("\t\tCreated: %s (UUID: %s)\n", followedUserConversation.conversation.title, followedUserConversation.conversation.id);
@@ -820,7 +820,7 @@ public final class Chat {
   // Find the first conversation with the given name and return its context.
   // If no conversation has the given name, this will return null.
   private ConversationContext findConversation(String title) {
-    for (final ConversationContext conversation : userPanelContext.conversations()) {
+    for (final ConversationContext conversation : userPanelContext.conversations().values()) {
       if (title.equals(conversation.conversation.title)) {
         return conversation;
       }
@@ -831,12 +831,7 @@ public final class Chat {
   // Finds the first conversation with the given name and returns its context.
   // If no conversation has the given name, this will return null.
   private ConversationContext findConversation(Uuid id) {
-    for (final ConversationContext conversation : userPanelContext.conversations()) {
-      if (id.equals(conversation.conversation.id)) {
-        return conversation;
-      }
-     }
-    return null;
+    return userPanelContext.conversations().get(id);
    }
 
   public void addUserInterest(Uuid userID, Uuid followedUserID){
@@ -851,10 +846,10 @@ public final class Chat {
     if(userInterest.contains(followedUserID))
       System.out.println("ERROR: User is already followed!");
     else {
-      HashMap<Uuid, Integer> followedUserConversations = (convoMessageCountsMap.get(followedUserID) == null) ? new HashMap<>() : convoMessageCountsMap.get(followedUserID);
+      HashMap<Uuid, Integer> followedUserConversations = convoMessageCountsMap.computeIfAbsent(followedUserID, messageCount -> new HashMap<>());
 
       // Intialize the message count for all of this users conversations to 0
-      for(ConversationContext c : findUser(followedUserID).conversations()){
+      for(ConversationContext c : findUser(followedUserID).conversations().values()){
         followedUserConversations.put(c.conversation.id, 0);
       }
 
@@ -866,7 +861,7 @@ public final class Chat {
   }
 
   public void addConvoInterest(Uuid userID, Uuid followedConvoID){
-    Set<Uuid> convoInterest = (convoInterestMap.get(userID) == null) ? new HashSet<>() : convoInterestMap.get(userID);
+    Set<Uuid> convoInterest = convoInterestMap.computeIfAbsent(userID, followedConvo -> new HashSet<>());
 
     if(convoInterest.contains(followedConvoID))
         System.out.println("ERROR: Conversation is already in interest list!");
@@ -874,7 +869,7 @@ public final class Chat {
       convoInterest.add(followedConvoID);
       convoInterestMap.put(userID, convoInterest);
 
-      HashMap<Uuid, Integer> followedConversations = (convoMessageCountsMap.get(userID) == null) ? new HashMap<>() : convoMessageCountsMap.get(userID);
+      HashMap<Uuid, Integer> followedConversations = convoMessageCountsMap.computeIfAbsent(userID, messageCount -> new HashMap<>());
       followedConversations.put(followedConvoID, 0);
     }
   }
