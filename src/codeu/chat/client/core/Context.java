@@ -14,9 +14,9 @@
 
 package codeu.chat.client.core;
 
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 
 import codeu.chat.common.BasicView;
 import codeu.chat.common.ServerInfo;
@@ -41,15 +41,17 @@ public class Context {
         new UserContext(user, view, controller);
   }
 
-  public Iterable<UserContext> allUsers() {
-    final Collection<UserContext> users = new ArrayList<>();
-    for (final User user : view.getUsers()) {
-      users.add(new UserContext(user, view, controller));
+  public HashMap<Uuid, UserContext> allUsers() {
+
+    final HashMap<Uuid, UserContext> users = new HashMap<>();
+    for(final User user : view.getUsers()){
+      UserContext u = new UserContext(user, view, controller);
+      users.put(u.user.id, u);
     }
     return users;
   }
 
   public ServerInfo getInfo() {
-    return ((View)view).getInfo();
+    return view.getInfo();
   }
 }

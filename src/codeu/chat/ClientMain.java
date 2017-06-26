@@ -14,16 +14,11 @@
 
 package codeu.chat;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 
 import codeu.chat.client.commandline.Chat;
 import codeu.chat.client.core.Context;
-import codeu.chat.util.Logger;
-import codeu.chat.util.RemoteAddress;
-import codeu.chat.util.Time;
+import codeu.chat.util.*;
 import codeu.chat.util.connections.ClientConnectionSource;
 import codeu.chat.util.connections.ConnectionSource;
 
@@ -33,6 +28,57 @@ final class ClientMain {
 
   private static Time lastLogBackup;
   private static final long BACKUP_RATE_IN_MS = 30000;
+
+  private static Chat chat;
+
+  private static void reloadOldInterests() throws IOException {
+    // Open the transaction log file for reading
+    BufferedReader bufferedReader = new BufferedReader(new FileReader("data/transaction_log.txt"));
+
+    // Read the header lines of each transaction log
+    String line;
+
+    System.out.println("Loading interest system...");
+
+    while((line = bufferedReader.readLine()) != null) {
+
+      // Instantiate a Tokenizer to parse through log's data
+      Tokenizer logInfo = new Tokenizer(line);
+
+      String commandType = logInfo.next();
+
+      if(commandType.equals("ADD-INTEREST-USER")){
+        Uuid owner = Uuid.parse(logInfo.next());
+        Uuid follow = Uuid.parse(logInfo.next());
+
+        chat.addUserInterest(owner, follow);
+      }
+      else if(commandType.equals("REMOVE-INTEREST-USER")){
+        Uuid owner = Uuid.parse(logInfo.next());
+        Uuid follow = Uuid.parse(logInfo.next());
+
+        chat.removeUserInterest(owner, follow);
+      }
+      else if(commandType.equals("ADD-INTEREST-CONVERSATION")){
+        Uuid owner = Uuid.parse(logInfo.next());
+        Uuid follow = Uuid.parse(logInfo.next());
+
+        chat.addConvoInterest(owner, follow);
+      }
+      else if(commandType.equals("REMOVE-INTEREST-CONVERSATION")){
+        Uuid owner = Uuid.parse(logInfo.next());
+        Uuid follow = Uuid.parse(logInfo.next());
+
+        chat.removeConvoInterest(owner, follow);
+      }
+    }
+
+    LOG.info("Successfully restored last logged interest system state.");
+
+    System.out.println("Successfully loaded interest system!");
+
+    bufferedReader.close();
+  }
 
   public static void main(String [] args) {
 
@@ -51,9 +97,17 @@ final class ClientMain {
     final ConnectionSource source = new ClientConnectionSource(address.host, address.port);
 
     LOG.info("Creating client...");
-    final Chat chat = new Chat(new Context(source));
+
+    chat = new Chat(new Context(source));
 
     LOG.info("Created client");
+
+    // Reload old interests
+    try {
+      reloadOldInterests();
+    } catch (Exception e) {
+      LOG.info("Could not reload last logged interest system.");
+    }
 
     boolean keepRunning = true;
 

@@ -16,6 +16,8 @@ package codeu.chat.common;
 
 import codeu.chat.util.Uuid;
 
+import java.util.Collection;
+
 // BASIC CONTROLLER
 //
 //   The controller component in the Model-View-Controller pattern. This
@@ -50,5 +52,4 @@ public interface BasicController {
   //  representing the full state of the conversation on the server.
   //  Whether conversations can have the same title is undefined.
   ConversationHeader newConversation(String title, Uuid owner);
-
 }

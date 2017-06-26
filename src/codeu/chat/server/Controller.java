@@ -15,6 +15,7 @@
 package codeu.chat.server;
 
 import java.util.Collection;
+import java.util.HashSet;
 
 import codeu.chat.common.BasicController;
 import codeu.chat.common.ConversationHeader;
