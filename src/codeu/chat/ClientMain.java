@@ -33,15 +33,14 @@ final class ClientMain {
 
   private static void reloadOldInterests() throws IOException {
     // Open the transaction log file for reading
-    FileReader fileReader = new FileReader("data/transaction_log.txt");
-    BufferedReader bufferedReader = new BufferedReader(fileReader);
+    BufferedReader bufferedReader = new BufferedReader(new FileReader("data/transaction_log.txt"));
 
     // Read the header lines of each transaction log
-    String line = bufferedReader.readLine();
+    String line;
 
     System.out.println("Loading interest system...");
 
-    while(line != null) {
+    while((line = bufferedReader.readLine()) != null) {
 
       // Instantiate a Tokenizer to parse through log's data
       Tokenizer logInfo = new Tokenizer(line);
@@ -80,7 +79,6 @@ final class ClientMain {
 
     System.out.println("Successfully loaded interest system!");
 
-    fileReader.close();
     bufferedReader.close();
   }
 

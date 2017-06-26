@@ -347,16 +347,8 @@ public final class Chat {
             panels.push(createConversationPanel(conversation));
 
             // If this user isn't in the new conversations map, add them with a new Set
-            Set<Uuid> newConversations;
-            if (!newConversationsMap.containsKey(user.user.id)){
-              newConversations = new HashSet<>();
-            }
-            else { //if user already has Set of updated convos get it
-              newConversations = newConversationsMap.get(userPanelContext.user.id);
-            }
-
+            Set<Uuid> newConversations = newConversationsMap.computeIfAbsent(user.user.id, id -> new HashSet<>());
             newConversations.add(conversation.conversation.id);
-            newConversationsMap.put(user.user.id, newConversations);
 
             transactionLog.add(String.format("ADD-CONVERSATION %s %s \"%s\" %s",
                     conversation.conversation.id,
@@ -474,7 +466,7 @@ public final class Chat {
     panel.register("c-interest-remove", new Panel.Command() {
       @Override
       public void invoke(List<String> args){
-        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        final String name = String.join(" ", args);
         if (name.length() > 0) {
           final ConversationContext conversation = findConversation(name);
           if (conversation == null) {
@@ -768,11 +760,9 @@ public final class Chat {
   }
 
   private void updateConversationsMap(Uuid user, Uuid convo){
-    Set<Uuid> conversations = (updatedConversationsMap.get(user) == null) ? new HashSet<>() : updatedConversationsMap.get(user);
+    Set<Uuid> conversations = updatedConversationsMap.computeIfAbsent(user, convoID -> new HashSet<>());
 
     conversations.add(convo);
-    updatedConversationsMap.put(user, conversations);
-
   }
 
   private void removeUpdatedConversation(Uuid user, Uuid convo) {
@@ -850,7 +840,7 @@ public final class Chat {
    }
 
   public void addUserInterest(Uuid userID, Uuid followedUserID){
-    Set<Uuid> userInterest = (userInterestMap.get(userID) == null) ? new HashSet<>() : userInterestMap.get(userID);
+    Set<Uuid> userInterest = userInterestMap.computeIfAbsent(userID, followedUser -> new HashSet<>());
 
     // Check if the user is trying to follow themselves
     if(userID.id() == followedUserID.id()) {
