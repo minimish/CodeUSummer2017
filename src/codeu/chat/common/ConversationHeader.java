@@ -34,7 +34,6 @@ public final class ConversationHeader {
       Uuid.SERIALIZER.write(out, value.owner);
       Time.SERIALIZER.write(out, value.creation);
       Serializers.STRING.write(out, value.title);
-
     }
 
     @Override
@@ -59,12 +58,14 @@ public final class ConversationHeader {
   //reset counter every time "status update" is called
   public int messageCounter;
 
+  public int messageCounter;
+
   public ConversationHeader(Uuid id, Uuid owner, Time creation, String title) {
 
     this.id = id;
     this.owner = owner;
     this.creation = creation;
     this.title = title;
-
+    this.messageCounter = 0;
   }
 }

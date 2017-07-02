@@ -14,8 +14,7 @@
 
 package codeu.chat.client.core;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 
 import codeu.chat.common.BasicController;
 import codeu.chat.common.BasicView;
@@ -29,28 +28,40 @@ public final class UserContext {
   private final BasicView view;
   private final BasicController controller;
 
+  public Set<Uuid> newConversations;
+
   public UserContext(User user, BasicView view, BasicController controller) {
     this.user = user;
     this.view = view;
     this.controller = controller;
+
+    newConversations = new HashSet<>();
   }
 
   public ConversationContext start(String name) {
     final ConversationHeader conversation = controller.newConversation(name, user.id);
-    return conversation == null ?
-        null :
-        new ConversationContext(user, conversation, view, controller);
+
+    if(conversation != null){
+      return new ConversationContext(user, conversation, view, controller);
+    }
+    return null;
   }
 
-  public Iterable<ConversationContext> conversations() {
-
-    // Use all the ids to get all the conversations and convert them to
-    // Conversation Contexts.
-    final Collection<ConversationContext> all = new ArrayList<>();
-    for (final ConversationHeader conversation : view.getConversations()) {
-      all.add(new ConversationContext(user, conversation, view, controller));
+  public HashMap<Uuid, ConversationContext> conversations() {
+    final HashMap<Uuid, ConversationContext> conversations = new HashMap<>();
+    for(final ConversationHeader c : view.getConversations()){
+      conversations.put(c.id, new ConversationContext(user, c, view, controller));
     }
 
-    return all;
+    return conversations;
+//    // Use all the ids to get all the conversations and convert them to
+//    // Conversation Contexts.
+//    final Collection<ConversationContext> all = new ArrayList<>();
+//    for (final ConversationHeader conversation : view.getConversations()) {
+//      all.add(new ConversationContext(user, conversation, view, controller));
+//    }
+//
+//    return all;
   }
+
 }

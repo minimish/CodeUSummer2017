@@ -18,10 +18,7 @@ package codeu.chat.server;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import codeu.chat.client.core.Context;
 import codeu.chat.common.*;
@@ -33,8 +30,6 @@ public final class Server {
   private interface Command {
     void onMessage(InputStream in, OutputStream out) throws IOException;
   }
-
-  private static final ServerInfo info = new ServerInfo();
 
   private static final Logger.Log LOG = Logger.newLog(Server.class);
 
@@ -176,7 +171,7 @@ public final class Server {
 
         // Write out server info response
         Serializers.INTEGER.write(out, NetworkCode.SERVER_INFO_RESPONSE);
-        Uuid.SERIALIZER.write(out, info.version);
+        Uuid.SERIALIZER.write(out, view.getInfo().version);
       }
     });
 

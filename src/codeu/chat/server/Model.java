@@ -14,11 +14,11 @@
 
 package codeu.chat.server;
 
+import java.util.Collection;
 import java.util.Comparator;
 
 import codeu.chat.common.ConversationHeader;
 import codeu.chat.common.ConversationPayload;
-import codeu.chat.common.LinearUuidGenerator;
 import codeu.chat.common.Message;
 import codeu.chat.common.User;
 import codeu.chat.util.Time;

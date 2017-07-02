@@ -51,4 +51,10 @@ public interface BasicView {
   //
   //   Return all messages whose id is found in the given collection.
   Collection<Message> getMessages(Collection<Uuid> ids);
+
+  // GET SERVER INFO
+  //
+  //  Return the current server information
+  ServerInfo getInfo();
+
 }
