@@ -53,6 +53,10 @@ public final class ConversationHeader {
   public final Uuid owner;
   public final Time creation;
   public final String title;
+  //used to keep track of messages added to convo for interest system
+  //TODO update this counter every time message is added if this convo is in interests of user
+  //reset counter every time "status update" is called
+  public int messageCounter;
 
   public int messageCounter;
 

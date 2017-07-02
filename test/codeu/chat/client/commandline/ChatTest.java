@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -120,9 +121,9 @@ public final class ChatTest {
         }
 
         @Override
-        public Iterable<UserContext> allUsers() {
-            final Collection<UserContext> users = new ArrayList<>();
-            users.add(userContext);
+        public HashMap<Uuid, UserContext> allUsers() {
+            final HashMap<Uuid, UserContext> users = new HashMap<>();
+            users.put(userContext.user.id, userContext);
 
             return users;
         }

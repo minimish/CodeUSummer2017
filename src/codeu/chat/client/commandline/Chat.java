@@ -187,7 +187,7 @@ public final class Chat {
     panel.register("u-list", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        for (final UserContext user : context.allUsers()) {
+        for (final UserContext user : context.allUsers().values()) {
           System.out.format(
               "USER %s (UUID: %s)\n",
               user.user.name,
@@ -349,6 +349,7 @@ public final class Chat {
             // If this user isn't in the new conversations map, add them with a new Set
             Set<Uuid> newConversations = newConversationsMap.computeIfAbsent(user.user.id, id -> new HashSet<>());
             newConversations.add(conversation.conversation.id);
+            newConversationsMap.put(user.user.id, newConversations);
 
             transactionLog.add(String.format("ADD-CONVERSATION %s %s \"%s\" %s",
                     conversation.conversation.id,
@@ -849,6 +850,7 @@ public final class Chat {
     Set<Uuid> conversations = updatedConversationsMap.computeIfAbsent(user, convoID -> new HashSet<>());
 
     conversations.add(convo);
+    updatedConversationsMap.put(user, conversations);
   }
 
   private void removeUpdatedConversation(Uuid user, Uuid convo) {
@@ -864,13 +866,12 @@ public final class Chat {
   // of a specific user.
   private void incrementMessageCount(Uuid convoID){
 
-    for(UserContext user : rootPanelContext.allUsers()){
+    for(UserContext user : rootPanelContext.allUsers().values()){
       HashMap<Uuid, Integer> convoCount = (convoMessageCountsMap.get(user.user.id) == null) ? new HashMap<>() : convoMessageCountsMap.get(user.user.id);
       Integer count = (convoCount.get(convoID) == null) ? 0 : convoCount.get(convoID);
 
       convoCount.put(convoID, count + 1);
       convoMessageCountsMap.put(user.user.id, convoCount);
-
     }
   }
 
@@ -884,7 +885,7 @@ public final class Chat {
   // Find the first user with the given name and return a user context
   // for that user. If no user is found, the function will return null.
   private UserContext findUser(String name) {
-    for (final UserContext user : rootPanelContext.allUsers()) {
+    for (final UserContext user : rootPanelContext.allUsers().values()) {
       if (user.user.name.equals(name)) {
         return user;
       }
@@ -895,12 +896,7 @@ public final class Chat {
   // Finds the first user with the given Uuid and returns a user context
   // for that user. If no user is found, the function will return null.
   private UserContext findUser(Uuid id) {
-    for (final UserContext user : rootPanelContext.allUsers()) {
-      if (user.user.id.equals(id)) {
-        return user;
-      }
-    }
-    return null;
+    return rootPanelContext.allUsers().get(id);
   }
 
   // Find the first conversation with the given name and return its context.
@@ -957,6 +953,7 @@ public final class Chat {
 
       HashMap<Uuid, Integer> followedConversations = convoMessageCountsMap.computeIfAbsent(userID, messageCount -> new HashMap<>());
       followedConversations.put(followedConvoID, 0);
+      convoMessageCountsMap.put(userID, followedConversations);
     }
   }
 
