@@ -356,6 +356,8 @@ public final class Chat {
                     conversation.conversation.title,
                     conversation.conversation.creation.inMs()
             ));
+
+            //TODO set this user's creator, owner, and memeber bits to true for this conversation
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -378,6 +380,8 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
+
+            //TODO set this user's member bit for this conversation as true (joining convo makes users a member)
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -676,6 +680,12 @@ public final class Chat {
         System.out.println("    List all messages in the current conversation.");
         System.out.println("  m-add <message>");
         System.out.println("    Add a new message to the current conversation as the current user.");
+        System.out.println("  u-remove-member <username>");
+        System.out.println("    Remove a member of the current conversation, can only be done by conversation owners or creator.");
+        System.out.println("  u-remove-owner <username>");
+        System.out.println("    Remove an owner of the current conversation, can only be done by conversation's creator.");
+        System.out.println("  u-add-owner <username>");
+        System.out.println("    Add an owner of the current conversation, can only be done by conversation's creator.");
         System.out.println("  info");
         System.out.println("    Display all info about the current conversation.");
         System.out.println("  back");
@@ -716,6 +726,10 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
+        //TODO check if user is a member of conversation they're trying to add to
+        //if (user isn't member){
+        //System.out.println("ERROR: You are not a member of the conversation, and may not add a message.");
+        //return;}
         final String message = args.size() > 0 ? String.join(" ", args) : "";
         if (message.length() > 0) {
           MessageContext messageContext = conversation.add(message);
@@ -735,6 +749,78 @@ public final class Chat {
           )); //command message-id message-author message-content creation-time
         } else {
           System.out.println("ERROR: Messages must contain text");
+        }
+      }
+    });
+
+    // U-REMOVE-MEMBER (removes member from conversation)
+    //
+    // A user who's the conversation's owner or creator may use this command
+    // to remove a member/user from the conversation.
+    //
+    panel.register("u-remove-member", new Panel.Command() {
+      @Override
+      public void invoke(List<String> args) {
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        //TODO check if user that calls this command is owner or creator of conversation, if not throw error
+
+        if (name.length() > 0) {
+          final UserContext removeUser = findUser(name);
+          if (removeUser == null) {
+            System.out.format("ERROR: User '%s' does not exist.\n", name);
+          } else {
+            //TODO set removeUser's member bit for this conversation to false
+          }
+        } else {
+          System.out.println("ERROR: Missing <username>");
+        }
+      }
+    });
+
+    // U-REMOVE-OWNER (removes owner of conversation)
+    //
+    // A user who's the conversation's creator may use this command
+    // to remove a user's owner status of the conversation.
+    //
+    panel.register("u-remove-owner", new Panel.Command() {
+      @Override
+      public void invoke(List<String> args) {
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        //TODO check if user that calls this command creator of conversation, if not throw error
+
+        if (name.length() > 0) {
+          final UserContext removedOwner = findUser(name);
+          if (removedOwner == null) {
+            System.out.format("ERROR: User '%s' does not exist.\n", name);
+          } else {
+            //TODO set removedOwner's owner bit for this conversation to false
+          }
+        } else {
+          System.out.println("ERROR: Missing <username>");
+        }
+      }
+    });
+
+    // U-ADD-OWNER (removes owner of conversation)
+    //
+    // A user who's the conversation's creator may use this command
+    // to add owner status of the conversation to a user.
+    //
+    panel.register("u-add-owner", new Panel.Command() {
+      @Override
+      public void invoke(List<String> args) {
+        final String name = args.size() > 0 ? String.join(" ", args) : "";
+        //TODO check if user that calls this command creator of conversation, if not throw error
+
+        if (name.length() > 0) {
+          final UserContext addedOwner = findUser(name);
+          if (addedOwner == null) {
+            System.out.format("ERROR: User '%s' does not exist.\n", name);
+          } else {
+            //TODO set removedOwner's owner bit for this conversation to true
+          }
+        } else {
+          System.out.println("ERROR: Missing <username>");
         }
       }
     });
