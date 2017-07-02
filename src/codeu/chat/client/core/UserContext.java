@@ -48,20 +48,15 @@ public final class UserContext {
   }
 
   public HashMap<Uuid, ConversationContext> conversations() {
+    // Use all the ids to get all the conversations and convert them to
+    // Conversation Contexts.
     final HashMap<Uuid, ConversationContext> conversations = new HashMap<>();
     for(final ConversationHeader c : view.getConversations()){
-      conversations.put(c.id, new ConversationContext(user, c, view, controller));
+      ConversationContext convo = new ConversationContext(user, c, view, controller);
+      conversations.put(convo.conversation.id, convo);
     }
 
     return conversations;
-//    // Use all the ids to get all the conversations and convert them to
-//    // Conversation Contexts.
-//    final Collection<ConversationContext> all = new ArrayList<>();
-//    for (final ConversationHeader conversation : view.getConversations()) {
-//      all.add(new ConversationContext(user, conversation, view, controller));
-//    }
-//
-//    return all;
   }
 
 }

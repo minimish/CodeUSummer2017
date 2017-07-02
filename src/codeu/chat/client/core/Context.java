@@ -16,10 +16,12 @@ package codeu.chat.client.core;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 
 import codeu.chat.common.BasicView;
 import codeu.chat.common.ServerInfo;
 import codeu.chat.common.User;
+import codeu.chat.util.Uuid;
 import codeu.chat.util.connections.ConnectionSource;
 
 public class Context {
@@ -39,10 +41,12 @@ public class Context {
         new UserContext(user, view, controller);
   }
 
-  public Iterable<UserContext> allUsers() {
-    final Collection<UserContext> users = new ArrayList<>();
-    for (final User user : view.getUsers()) {
-      users.add(new UserContext(user, view, controller));
+  public HashMap<Uuid, UserContext> allUsers() {
+
+    final HashMap<Uuid, UserContext> users = new HashMap<>();
+    for(final User user : view.getUsers()){
+      UserContext u = new UserContext(user, view, controller);
+      users.put(u.user.id, u);
     }
     return users;
   }

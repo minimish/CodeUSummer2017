@@ -71,8 +71,6 @@ final class ClientMain {
 
         chat.removeConvoInterest(owner, follow);
       }
-
-      line = bufferedReader.readLine();
     }
 
     LOG.info("Successfully restored last logged interest system state.");
