@@ -17,6 +17,7 @@ package codeu.chat.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.HashMap;
 
 import codeu.chat.util.Serializer;
@@ -72,7 +73,7 @@ public final class ConversationHeader {
   }
 
   // Flag is set to true if user is to be set to new status, else it's bit is 'turned off'
-  private void toggleUserToMember(User u, boolean flag){
+  public void toggleUserToMember(User u, boolean flag){
     Integer access = accessControls.computeIfAbsent(u.id, newAccess -> 0);
     Integer newAccess;
 
@@ -87,7 +88,7 @@ public final class ConversationHeader {
     accessControls.put(u.id, newAccess);
   }
 
-  private void toggleUserToOwner(User u, boolean flag){
+  public void toggleUserToOwner(User u, boolean flag){
     Integer access = accessControls.computeIfAbsent(u.id, newAccess -> 0);
     Integer newAccess;
 
@@ -104,7 +105,7 @@ public final class ConversationHeader {
     accessControls.put(u.id, newAccess);
   }
 
-  private void toggleUserToCreator(User u, boolean flag){
+  public void toggleUserToCreator(User u, boolean flag){
     Integer access = accessControls.computeIfAbsent(u.id, newAccess -> 0);
     Integer newAccess;
 
@@ -120,15 +121,15 @@ public final class ConversationHeader {
     accessControls.put(u.id, newAccess);
   }
 
-  private boolean isMember(User u){
+  public boolean isMember(User u){
     return accessControls.get(u.id) != null && (accessControls.get(u.id) & MEMBER) != 0;
   }
 
-  private boolean isOwner(User u){
+  public boolean isOwner(User u){
     return accessControls.get(u.id) != null && (accessControls.get(u.id) & OWNER) != 0;
   }
 
-  private boolean isCreator(User u){
+  public boolean isCreator(User u){
     return accessControls.get(u.id) != null && (accessControls.get(u.id) & CREATOR) != 0;
   }
 }

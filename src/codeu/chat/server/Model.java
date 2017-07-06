@@ -14,8 +14,8 @@
 
 package codeu.chat.server;
 
-import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 
 import codeu.chat.common.ConversationHeader;
 import codeu.chat.common.ConversationPayload;
@@ -53,6 +53,13 @@ public final class Model {
 
   private static final Comparator<String> STRING_COMPARE = String.CASE_INSENSITIVE_ORDER;
 
+  private static final Comparator<HashMap<Uuid, Integer>> HASH_MAP_COMPARATOR = new Comparator<HashMap<Uuid, Integer>>() {
+    @Override
+    public int compare(HashMap<Uuid, Integer> o1, HashMap<Uuid, Integer> o2) {
+      return Integer.compare(o1.size(), o2.size());
+    }
+  };
+
   private final Store<Uuid, User> userById = new Store<>(UUID_COMPARE);
   private final Store<Time, User> userByTime = new Store<>(TIME_COMPARE);
   private final Store<String, User> userByText = new Store<>(STRING_COMPARE);
@@ -60,6 +67,7 @@ public final class Model {
   private final Store<Uuid, ConversationHeader> conversationById = new Store<>(UUID_COMPARE);
   private final Store<Time, ConversationHeader> conversationByTime = new Store<>(TIME_COMPARE);
   private final Store<String, ConversationHeader> conversationByText = new Store<>(STRING_COMPARE);
+  private final Store<HashMap<Uuid, Integer>, ConversationHeader> conversationByAccessControl = new Store<>(HASH_MAP_COMPARATOR);
 
   private final Store<Uuid, ConversationPayload> conversationPayloadById = new Store<>(UUID_COMPARE);
 
@@ -90,6 +98,8 @@ public final class Model {
     conversationByTime.insert(conversation.creation, conversation);
     conversationByText.insert(conversation.title, conversation);
     conversationPayloadById.insert(conversation.id, new ConversationPayload(conversation.id));
+
+    conversationByAccessControl.insert(conversation.accessControls, conversation);
   }
 
   public StoreAccessor<Uuid, ConversationHeader> conversationById() {
@@ -107,6 +117,8 @@ public final class Model {
   public StoreAccessor<Uuid, ConversationPayload> conversationPayloadById() {
     return conversationPayloadById;
   }
+
+  public StoreAccessor<HashMap<Uuid, Integer>, ConversationHeader> conversationByAccessControl() { return conversationByAccessControl; }
 
   public void add(Message message) {
     messageById.insert(message.id, message);

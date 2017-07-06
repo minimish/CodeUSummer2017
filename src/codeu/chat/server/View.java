@@ -16,6 +16,7 @@ package codeu.chat.server;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 
 import codeu.chat.common.*;
@@ -43,6 +44,10 @@ public final class View implements BasicView, SinglesView {
   @Override
   public Collection<ConversationHeader> getConversations() {
     return all(model.conversationById());
+  }
+
+  public Collection<ConversationHeader> getConversationAccessControls() {
+    return all(model.conversationByAccessControl());
   }
 
   @Override

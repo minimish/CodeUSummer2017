@@ -770,7 +770,7 @@ public final class Chat {
           if (removeUser == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
-            //TODO set removeUser's member bit for this conversation to false
+            conversation.conversation.toggleUserToMember(removeUser.user, false);
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -794,7 +794,9 @@ public final class Chat {
           if (removedOwner == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
-            //TODO set removedOwner's owner bit for this conversation to false
+            System.out.format("Owner bit - pre: %b\n", conversation.conversation.isOwner(removedOwner.user));
+            conversation.conversation.toggleUserToOwner(removedOwner.user, false);
+            System.out.format("Owner bit: %b\n", conversation.conversation.isOwner(removedOwner.user));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
@@ -818,7 +820,9 @@ public final class Chat {
           if (addedOwner == null) {
             System.out.format("ERROR: User '%s' does not exist.\n", name);
           } else {
-            //TODO set removedOwner's owner bit for this conversation to true
+              System.out.format("Owner bit - pre: %b\n", conversation.conversation.isOwner(addedOwner.user));
+              conversation.conversation.toggleUserToOwner(addedOwner.user, true);
+              System.out.format("Owner bit: %b\n", conversation.conversation.isOwner(addedOwner.user));
           }
         } else {
           System.out.println("ERROR: Missing <username>");
