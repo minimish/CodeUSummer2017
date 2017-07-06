@@ -17,6 +17,7 @@ package codeu.chat.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
 
 import codeu.chat.util.Serializer;
 import codeu.chat.util.Serializers;
@@ -53,12 +54,12 @@ public final class ConversationHeader {
   public final Uuid owner;
   public final Time creation;
   public final String title;
-  //used to keep track of messages added to convo for interest system
-  //TODO update this counter every time message is added if this convo is in interests of user
-  //reset counter every time "status update" is called
-  public int messageCounter;
 
-  public int messageCounter;
+  public final HashMap<Uuid, Integer> accessControl;
+
+  public static final int MEMBER = 0x0001;
+  public static final int OWNER = 0x0002;
+  public static final int CREATOR = 0x0004;
 
   public ConversationHeader(Uuid id, Uuid owner, Time creation, String title) {
 
@@ -66,6 +67,54 @@ public final class ConversationHeader {
     this.owner = owner;
     this.creation = creation;
     this.title = title;
-    this.messageCounter = 0;
+
+    accessControl = new HashMap<>();
+  }
+
+  // Flag is set to true if user is to be set to new status, else it's bit is 'turned off'
+  private void toggleUserToMember(User u, boolean flag){
+    Integer access = accessControl.computeIfAbsent(u.id, newAccess -> 0);
+    Integer newAccess;
+
+    if(flag)
+      newAccess = access | MEMBER;
+    else {
+      newAccess = access & MEMBER;
+      toggleUserToOwner(u, false);
+      toggleUserToCreator(u, false);
+    }
+
+    accessControl.put(u.id, newAccess);
+  }
+
+  private void toggleUserToOwner(User u, boolean flag){
+    Integer access = accessControl.computeIfAbsent(u.id, newAccess -> 0);
+    Integer newAccess;
+
+    if(flag){
+      newAccess = access | OWNER;
+      toggleUserToMember(u, true);
+    }
+    else {
+      newAccess = access & OWNER;
+      toggleUserToCreator(u, false);
+    }
+
+    accessControl.put(u.id, newAccess);
+  }
+
+  private void toggleUserToCreator(User u, boolean flag){
+    Integer access = accessControl.computeIfAbsent(u.id, newAccess -> 0);
+    Integer newAccess;
+
+    if(flag) {
+      newAccess = access | CREATOR;
+      toggleUserToOwner(u, true);
+      toggleUserToMember(u, true);
+    }
+    else
+      newAccess = access & CREATOR;
+
+    accessControl.put(u.id, newAccess);
   }
 }
