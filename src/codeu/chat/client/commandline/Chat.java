@@ -378,15 +378,22 @@ public final class Chat {
       public void invoke(List<String> args) {
         final String name = args.size() > 0 ? String.join(" ", args) : "";
         if (name.length() > 0) {
-          final ConversationContext conversation = find(name);
-          if (conversation == null) {
-            System.out.format("ERROR: No conversation with name '%s'\n", name);
-          } else {
-            panels.push(createConversationPanel(conversation));
-            conversation.conversation.toggleUserToMember(user.user, true);
-          }
-        } else {
-          System.out.println("ERROR: Missing <title>");
+            final ConversationContext conversation = find(name);
+            //if the user has been removed from the conversation before they can't join on their own
+            if (!conversation.conversation.hasBeenRemoved(user.user)) {
+                if (conversation == null) {
+                    System.out.format("ERROR: No conversation with name '%s'\n", name);
+                } else {
+                    panels.push(createConversationPanel(conversation));
+                    conversation.conversation.toggleUserToMember(user.user, true);
+                }
+            } else {
+                System.out.println("ERROR: Missing <title>");
+            }
+        }
+        else {
+            System.out.println("ERROR: You have been removed from this conversation and can't rejoin.\n" +
+                    "You must be added to the conversation by an owner or creator to rejoin.");
         }
       }
 
@@ -682,6 +689,8 @@ public final class Chat {
         System.out.println("    List all messages in the current conversation.");
         System.out.println("  m-add <message>");
         System.out.println("    Add a new message to the current conversation as the current user.");
+          System.out.println("  u-add-member <username>");
+          System.out.println("    Add a member of the current conversation, can only be done by conversation owners or creator.");
         System.out.println("  u-remove-member <username>");
         System.out.println("    Remove a member of the current conversation, can only be done by conversation owners or creator.");
         System.out.println("  u-remove-owner <username>");
@@ -756,6 +765,41 @@ public final class Chat {
       }
     });
 
+      // U-ADD-MEMBER (adds member from conversation)
+      //
+      // A user who's the conversation's owner or creator may use this command
+      // to add a member/user from the conversation. Users become members when they
+      // initially join the conversation, they only needed to be added if they are
+      // removed from the conversation and want to rejoin.
+      //
+      panel.register("u-add-member", new Panel.Command() {
+          @Override
+          public void invoke(List<String> args) {
+              final String name = args.size() > 0 ? String.join(" ", args) : "";
+              ConversationHeader currentConvo = conversation.conversation;
+
+              if (currentConvo.isOwner(userPanelContext.user) || currentConvo.isCreator(userPanelContext.user)){
+                  if (name.length() > 0) {
+                      final UserContext removeUser = findUser(name);
+                      if (removeUser == null) {
+                          System.out.format("ERROR: User '%s' does not exist.\n", name);
+                      }
+                      else if (currentConvo.isCreator(removeUser.user) || currentConvo.isOwner(removeUser.user)){
+                          System.out.format("ERROR: User '%s' is an owner or creator.\n", name);
+                      }
+                      else {
+                          conversation.conversation.toggleUserToMember(removeUser.user, true);
+                      }
+                  } else {
+                      System.out.println("ERROR: Missing <username>");
+                  }
+              }
+              else {
+                  System.out.println("ERROR: Only users with owner or creator status\n can add members to a conversation.");
+              }
+          }
+      });
+
     // U-REMOVE-MEMBER (removes member from conversation)
     //
     // A user who's the conversation's owner or creator may use this command
@@ -778,6 +822,10 @@ public final class Chat {
             }
             else {
               conversation.conversation.toggleUserToMember(removeUser.user, false);
+
+              //the removed flag should only be toggled once, when the user is first removed
+              if (!conversation.conversation.hasBeenRemoved(removeUser.user))
+                conversation.conversation.toggleRemoved(removeUser.user);
             }
           } else {
             System.out.println("ERROR: Missing <username>");

@@ -61,6 +61,7 @@ public final class ConversationHeader {
   private static final int MEMBER = 0x0001;
   private static final int OWNER = 0x0002;
   private static final int CREATOR = 0x0004;
+  private static final int REMOVED = 0x0008;
 
   public ConversationHeader(Uuid id, Uuid owner, Time creation, String title) {
 
@@ -121,6 +122,17 @@ public final class ConversationHeader {
     accessControls.put(u.id, newAccess);
   }
 
+  // Flag is set to true if the user is removed from a conversation.
+  // Flag stays true once it's set.
+  public void toggleRemoved(User u){
+    Integer access = accessControls.computeIfAbsent(u.id, newAccess -> 0);
+    Integer newAccess;
+
+    newAccess = access | REMOVED;
+
+    accessControls.put(u.id, newAccess);
+  }
+
   public boolean isMember(User u){
     return accessControls.get(u.id) != null && (accessControls.get(u.id) & MEMBER) != 0;
   }
@@ -131,5 +143,9 @@ public final class ConversationHeader {
 
   public boolean isCreator(User u){
     return accessControls.get(u.id) != null && (accessControls.get(u.id) & CREATOR) != 0;
+  }
+
+  public boolean hasBeenRemoved(User u){
+    return accessControls.get(u.id) != null && (accessControls.get(u.id) & REMOVED) != 0;
   }
 }
