@@ -358,7 +358,9 @@ public final class Chat {
                     conversation.conversation.creation.inMs()
             ));
 
-            //TODO set this user's creator, owner, and memeber bits to true for this conversation
+            conversation.conversation.toggleUserToCreator(user.user, true);
+            conversation.conversation.toggleUserToOwner(user.user, true);
+            conversation.conversation.toggleUserToMember(user.user, true);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -381,8 +383,7 @@ public final class Chat {
             System.out.format("ERROR: No conversation with name '%s'\n", name);
           } else {
             panels.push(createConversationPanel(conversation));
-
-            //TODO set this user's member bit for this conversation as true (joining convo makes users a member)
+            conversation.conversation.toggleUserToMember(user.user, true);
           }
         } else {
           System.out.println("ERROR: Missing <title>");
@@ -727,29 +728,30 @@ public final class Chat {
     panel.register("m-add", new Panel.Command() {
       @Override
       public void invoke(List<String> args) {
-        //TODO check if user is a member of conversation they're trying to add to
-        //if (user isn't member){
-        //System.out.println("ERROR: You are not a member of the conversation, and may not add a message.");
-        //return;}
-        final String message = args.size() > 0 ? String.join(" ", args) : "";
-        if (message.length() > 0) {
-          MessageContext messageContext = conversation.add(message);
+        if (!conversation.conversation.isMember(userPanelContext.user)){
+          final String message = args.size() > 0 ? String.join(" ", args) : "";
+          if (message.length() > 0) {
+            MessageContext messageContext = conversation.add(message);
 
-          // Increment the message count for every conversation across the board
-          incrementMessageCount(conversation.conversation.id);
+            // Increment the message count for every conversation across the board
+            incrementMessageCount(conversation.conversation.id);
 
-          // Only indicate this conversation as updated by THIS user
-          updateConversationsMap(userPanelContext.user.id, conversation.conversation.id);
+            // Only indicate this conversation as updated by THIS user
+            updateConversationsMap(userPanelContext.user.id, conversation.conversation.id);
 
-          transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
-                  messageContext.message.id,
-                  messageContext.message.author,
-                  conversation.conversation.id,
-                  messageContext.message.content,
-                  messageContext.message.creation.inMs()
-          )); //command message-id message-author message-content creation-time
-        } else {
-          System.out.println("ERROR: Messages must contain text");
+            transactionLog.add(String.format("ADD-MESSAGE %s %s %s \"%s\" %s",
+                    messageContext.message.id,
+                    messageContext.message.author,
+                    conversation.conversation.id,
+                    messageContext.message.content,
+                    messageContext.message.creation.inMs()
+            )); //command message-id message-author message-content creation-time
+          } else {
+            System.out.println("ERROR: Messages must contain text");
+          }
+        }
+        else {
+          System.out.println("ERROR: You are not a member of the conversation, and may not add a message.");
         }
       }
     });
@@ -763,17 +765,26 @@ public final class Chat {
       @Override
       public void invoke(List<String> args) {
         final String name = args.size() > 0 ? String.join(" ", args) : "";
-        //TODO check if user that calls this command is owner or creator of conversation, if not throw error
+        ConversationHeader currentConvo = conversation.conversation;
 
-        if (name.length() > 0) {
-          final UserContext removeUser = findUser(name);
-          if (removeUser == null) {
-            System.out.format("ERROR: User '%s' does not exist.\n", name);
+        if (currentConvo.isOwner(userPanelContext.user) || currentConvo.isCreator(userPanelContext.user)){
+          if (name.length() > 0) {
+            final UserContext removeUser = findUser(name);
+            if (removeUser == null) {
+              System.out.format("ERROR: User '%s' does not exist.\n", name);
+            }
+            else if (currentConvo.isCreator(removeUser.user) || currentConvo.isOwner(removeUser.user)){
+              System.out.format("ERROR: User '%s' is an owner or creator.\n", name);
+            }
+            else {
+              conversation.conversation.toggleUserToMember(removeUser.user, false);
+            }
           } else {
-            conversation.conversation.toggleUserToMember(removeUser.user, false);
+            System.out.println("ERROR: Missing <username>");
           }
-        } else {
-          System.out.println("ERROR: Missing <username>");
+        }
+        else {
+          System.out.println("ERROR: Only users with owner or creator status\n can remove members from a conversation.");
         }
       }
     });
@@ -787,19 +798,23 @@ public final class Chat {
       @Override
       public void invoke(List<String> args) {
         final String name = args.size() > 0 ? String.join(" ", args) : "";
-        //TODO check if user that calls this command creator of conversation, if not throw error
 
-        if (name.length() > 0) {
-          final UserContext removedOwner = findUser(name);
-          if (removedOwner == null) {
-            System.out.format("ERROR: User '%s' does not exist.\n", name);
+        if (conversation.conversation.isCreator(userPanelContext.user)){
+          if (name.length() > 0) {
+            final UserContext removedOwner = findUser(name);
+            if (removedOwner == null) {
+              System.out.format("ERROR: User '%s' does not exist.\n", name);
+            } else {
+              System.out.format("Owner bit - pre: %b\n", conversation.conversation.isOwner(removedOwner.user));
+              conversation.conversation.toggleUserToOwner(removedOwner.user, false);
+              System.out.format("Owner bit: %b\n", conversation.conversation.isOwner(removedOwner.user));
+            }
           } else {
-            System.out.format("Owner bit - pre: %b\n", conversation.conversation.isOwner(removedOwner.user));
-            conversation.conversation.toggleUserToOwner(removedOwner.user, false);
-            System.out.format("Owner bit: %b\n", conversation.conversation.isOwner(removedOwner.user));
+            System.out.println("ERROR: Missing <username>");
           }
-        } else {
-          System.out.println("ERROR: Missing <username>");
+        }
+        else {
+          System.out.println("ERROR: Only creators may remove owners from a conversation.");
         }
       }
     });
@@ -813,19 +828,23 @@ public final class Chat {
       @Override
       public void invoke(List<String> args) {
         final String name = args.size() > 0 ? String.join(" ", args) : "";
-        //TODO check if user that calls this command creator of conversation, if not throw error
 
-        if (name.length() > 0) {
-          final UserContext addedOwner = findUser(name);
-          if (addedOwner == null) {
-            System.out.format("ERROR: User '%s' does not exist.\n", name);
-          } else {
+        if (conversation.conversation.isCreator(userPanelContext.user)) {
+          if (name.length() > 0) {
+            final UserContext addedOwner = findUser(name);
+            if (addedOwner == null) {
+              System.out.format("ERROR: User '%s' does not exist.\n", name);
+            } else {
               System.out.format("Owner bit - pre: %b\n", conversation.conversation.isOwner(addedOwner.user));
               conversation.conversation.toggleUserToOwner(addedOwner.user, true);
               System.out.format("Owner bit: %b\n", conversation.conversation.isOwner(addedOwner.user));
+            }
+          } else {
+            System.out.println("ERROR: Missing <username>");
           }
-        } else {
-          System.out.println("ERROR: Missing <username>");
+        }
+        else {
+          System.out.println("ERROR: Only creators may add owners to a conversation.");
         }
       }
     });
